@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FitnessApi.Data;
@@ -7,21 +8,23 @@ namespace FitnessApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class WeightEntriesController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private static readonly Guid TestUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     public WeightEntriesController(AppDbContext db)
     {
         _db = db;
     }
 
+    private string CurrentUserId => User.FindFirst("sub")!.Value;
+
     [HttpGet]
     public async Task<ActionResult<List<WeightEntry>>> GetAll()
     {
         var entries = await _db.WeightEntries
-            .Where(w => w.UserId == TestUserId)
+            .Where(w => w.UserId == CurrentUserId)
             .OrderByDescending(w => w.LoggedOn)
             .ToListAsync();
         return Ok(entries);
@@ -32,7 +35,7 @@ public class WeightEntriesController : ControllerBase
     {
         var entry = new WeightEntry
         {
-            UserId = TestUserId,
+            UserId = CurrentUserId,
             WeightKg = request.WeightKg,
             LoggedOn = DateOnly.FromDateTime(DateTime.UtcNow),
             Note = request.Note

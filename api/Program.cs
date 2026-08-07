@@ -1,4 +1,6 @@
 using FitnessApi.Data;
+using FitnessApi.Middleware;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +20,18 @@ builder.Services.AddCors(options =>
     });
 });
 
+var clerkAuthority = builder.Configuration["Clerk:Authority"]
+    ?? throw new InvalidOperationException("Missing Clerk:Authority config value");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = clerkAuthority;
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters.ValidateAudience = false;
+    });
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -27,6 +41,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("DevCors");
+app.UseAuthentication();
+app.UseMiddleware<ClerkUserProvisioningMiddleware>();
+app.UseAuthorization();
 app.MapControllers();
 
 app.Run();

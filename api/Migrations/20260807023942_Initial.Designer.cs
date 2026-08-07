@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FitnessApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260806023344_Initial")]
+    [Migration("20260807023942_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -56,9 +56,8 @@ namespace FitnessApi.Migrations
 
             modelBuilder.Entity("FitnessApi.Models.User", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -78,16 +77,6 @@ namespace FitnessApi.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DisplayName = "Test user",
-                            Email = "test@local.dev",
-                            SubscriptionTier = "free"
-                        });
                 });
 
             modelBuilder.Entity("FitnessApi.Models.WeightEntry", b =>
@@ -102,8 +91,9 @@ namespace FitnessApi.Migrations
                     b.Property<string>("Note")
                         .HasColumnType("text");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<decimal>("WeightKg")
                         .HasColumnType("numeric");
@@ -133,8 +123,9 @@ namespace FitnessApi.Migrations
                     b.Property<Guid>("ExerciseId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<decimal?>("WeightUsedKg")
                         .HasColumnType("numeric");
@@ -157,8 +148,9 @@ namespace FitnessApi.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 

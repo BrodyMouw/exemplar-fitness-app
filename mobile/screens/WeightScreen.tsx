@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from "react-native";
 import axios from "axios";
+import { useAuth, useClerk } from "@clerk/expo";
 
 // Replace with your LAN IP, or 10.0.2.2 for Android emulator
 const API_BASE = "http://192.168.0.202:5002";
@@ -20,11 +21,20 @@ type WeightEntry = {
 };
 
 export default function WeightScreen() {
+  const { getToken } = useAuth();
+  const { signOut } = useClerk();
   const [weight, setWeight] = useState("");
   const [entries, setEntries] = useState<WeightEntry[]>([]);
 
+  const authHeaders = async () => {
+    const token = await getToken();
+    return { Authorization: `Bearer ${token}` };
+  };
+
   const loadEntries = async () => {
-    const res = await axios.get<WeightEntry[]>(`${API_BASE}/api/weightentries`);
+    const res = await axios.get<WeightEntry[]>(`${API_BASE}/api/weightentries`, {
+      headers: await authHeaders(),
+    });
     setEntries(res.data);
   };
 
@@ -34,9 +44,11 @@ export default function WeightScreen() {
 
   const logWeight = async () => {
     if (!weight) return;
-    await axios.post(`${API_BASE}/api/weightentries`, {
-      weightKg: parseFloat(weight),
-    });
+    await axios.post(
+      `${API_BASE}/api/weightentries`,
+      { weightKg: parseFloat(weight) },
+      { headers: await authHeaders() },
+    );
     setWeight("");
     loadEntries();
   };
@@ -48,6 +60,7 @@ export default function WeightScreen() {
         style={styles.input}
         keyboardType="decimal-pad"
         placeholder="Weight in kg"
+        placeholderTextColor="#888"
         value={weight}
         onChangeText={setWeight}
       />
@@ -62,24 +75,30 @@ export default function WeightScreen() {
         )}
         style={styles.list}
       />
+      <View style={styles.spacer} />
+      <Button title="Sign out" onPress={() => signOut()} color="#999" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 60 },
-  title: { fontSize: 20, fontWeight: "600", marginBottom: 16 },
+  container: { flex: 1, padding: 24, paddingTop: 60, backgroundColor: "#fff" },
+  title: { fontSize: 20, fontWeight: "600", marginBottom: 16, color: "#000" },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
+    color: "#000",
+    backgroundColor: "#fff",
   },
   list: { marginTop: 24 },
+  spacer: { height: 24 },
   entry: {
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+    color: "#000",
   },
 });
