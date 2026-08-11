@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from "react-native";
 import axios from "axios";
-import { useAuth, useClerk } from "@clerk/expo";
+import { useAuth } from "@clerk/expo";
 
 // Replace with your LAN IP, or 10.0.2.2 for Android emulator
 const API_BASE = "http://192.168.0.202:5002";
@@ -22,7 +22,6 @@ type WeightEntry = {
 
 export default function WeightScreen() {
   const { getToken } = useAuth();
-  const { signOut } = useClerk();
   const [weight, setWeight] = useState("");
   const [entries, setEntries] = useState<WeightEntry[]>([]);
 
@@ -74,9 +73,8 @@ export default function WeightScreen() {
           </Text>
         )}
         style={styles.list}
+        contentContainerStyle={styles.listContent}
       />
-      <View style={styles.spacer} />
-      <Button title="Sign out" onPress={() => signOut()} color="#999" />
     </View>
   );
 }
@@ -94,7 +92,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   list: { marginTop: 24 },
-  spacer: { height: 24 },
+  listContent: { paddingBottom: 100 },
   entry: {
     paddingVertical: 8,
     borderBottomWidth: 1,
