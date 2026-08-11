@@ -9,9 +9,7 @@ import {
 } from "react-native";
 import axios from "axios";
 import { useAuth } from "@clerk/expo";
-
-// Replace with your LAN IP, or 10.0.2.2 for Android emulator
-const API_BASE = "http://192.168.0.202:5002";
+import { API_BASE } from "../config";
 
 type WeightEntry = {
   id: string;

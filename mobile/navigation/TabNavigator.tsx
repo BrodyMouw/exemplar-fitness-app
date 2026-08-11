@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HomeScreen from "../screens/HomeScreen";
 import CommunityScreen from "../screens/CommunityScreen";
-import PlansScreen from "../screens/PlansScreen";
+import PlansStack from "./PlansStack";
 import WeightScreen from "../screens/WeightScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
@@ -59,7 +59,7 @@ export default function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Community" component={CommunityScreen} />
-      <Tab.Screen name="Plans" component={PlansScreen} />
+      <Tab.Screen name="Plans" component={PlansStack} />
       <Tab.Screen
         name="Weight"
         component={WeightScreen}
