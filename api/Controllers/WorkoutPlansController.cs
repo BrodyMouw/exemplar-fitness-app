@@ -40,7 +40,7 @@ public class WorkoutPlansController : ControllerBase
     public async Task<ActionResult<WorkoutPlan>> GetById(Guid id)
     {
         var plan = await _db.WorkoutPlans
-            .Include(p => p.Exercises.OrderBy(e => e.Order))
+            .Include(p => p.Routines.OrderBy(r => r.Order))
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (plan is null || plan.UserId != CurrentUserId)
