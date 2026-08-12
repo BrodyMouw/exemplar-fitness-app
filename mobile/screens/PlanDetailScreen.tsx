@@ -5,6 +5,7 @@ import {
   TextInput,
   Button,
   FlatList,
+  Pressable,
   StyleSheet,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -173,12 +174,20 @@ export default function PlanDetailScreen({ route, navigation }: Props) {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.row}>
-            <View>
+            <Pressable
+              style={styles.rowMain}
+              onPress={() =>
+                navigation.navigate("ExerciseLog", {
+                  exerciseId: item.id,
+                  exerciseName: item.name,
+                })
+              }
+            >
               <Text style={styles.rowTitle}>{item.name}</Text>
               <Text style={styles.rowSubtitle}>
                 {item.sets} sets x {item.reps} reps
               </Text>
-            </View>
+            </Pressable>
             <Button title="Delete" color="#d32f2f" onPress={() => deleteExercise(item.id)} />
           </View>
         )}
@@ -217,6 +226,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
+  rowMain: { flex: 1 },
   rowTitle: { fontSize: 16, fontWeight: "600", color: "#000" },
   rowSubtitle: { fontSize: 13, color: "#888", marginTop: 2 },
 });
