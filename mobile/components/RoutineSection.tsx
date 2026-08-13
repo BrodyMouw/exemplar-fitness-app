@@ -31,7 +31,7 @@ export function modeIcon(exercise?: Exercise): IconName {
   return exercise.weightType === "External" ? "barbell-outline" : "body-outline";
 }
 
-function prescriptionSummary(item: RoutineExercise): string {
+export function prescriptionSummary(item: RoutineExercise): string {
   const parts = [`${item.sets} sets`];
   if (item.exercise?.mode === "Time") {
     if (item.timePerSetSeconds) parts.push(`${item.timePerSetSeconds}s each`);

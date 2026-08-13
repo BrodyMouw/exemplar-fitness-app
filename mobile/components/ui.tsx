@@ -144,14 +144,16 @@ export function Chip({
   tone = "primary",
 }: {
   label: string;
-  tone?: "primary" | "accent" | "neutral";
+  tone?: "primary" | "accent" | "neutral" | "success";
 }) {
   const toneStyle =
     tone === "accent"
       ? { bg: colors.accentMuted, fg: colors.accent }
       : tone === "neutral"
         ? { bg: colors.background, fg: colors.textMuted }
-        : { bg: colors.primaryMuted, fg: colors.primary };
+        : tone === "success"
+          ? { bg: colors.successMuted, fg: colors.success }
+          : { bg: colors.primaryMuted, fg: colors.primary };
 
   return (
     <View style={[styles.chip, { backgroundColor: toneStyle.bg }]}>

@@ -32,6 +32,26 @@ export type Routine = {
   routineExercises: RoutineExercise[];
 };
 
+// Shape returned by GET /api/workoutplans - lighter than a full plan, with
+// counts for the list cards.
+export type WorkoutPlanSummary = {
+  id: string;
+  name: string;
+  description?: string;
+  routineCount: number;
+  exerciseCount: number;
+};
+
+export type WorkoutLog = {
+  id: string;
+  routineExerciseId: string;
+  completedAt: string;
+  actualSets: number;
+  actualReps?: number;
+  actualTimeSeconds?: number;
+  weightUsedKg?: number;
+};
+
 export type WorkoutPlan = {
   id: string;
   name: string;

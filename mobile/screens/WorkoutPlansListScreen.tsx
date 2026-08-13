@@ -1,17 +1,17 @@
 import { useState, useCallback } from "react";
-import { FlatList, StyleSheet } from "react-native";
+import { Text, FlatList, StyleSheet } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useApi } from "../api/client";
 import type { WorkoutPlanSummary } from "../api/types";
-import type { PlansStackParamList } from "../navigation/PlansStack";
+import type { WorkoutStackParamList } from "../navigation/WorkoutStack";
 import PlanCard from "../components/PlanCard";
 import { EmptyState } from "../components/ui";
-import { colors, spacing } from "../theme";
+import { colors, spacing, typography } from "../theme";
 
-type Props = NativeStackScreenProps<PlansStackParamList, "PlansList">;
+type Props = NativeStackScreenProps<WorkoutStackParamList, "WorkoutPlansList">;
 
-export default function PlansListScreen({ navigation }: Props) {
+export default function WorkoutPlansListScreen({ navigation }: Props) {
   const api = useApi();
   const [plans, setPlans] = useState<WorkoutPlanSummary[]>([]);
 
@@ -29,13 +29,18 @@ export default function PlansListScreen({ navigation }: Props) {
       numColumns={2}
       data={plans}
       keyExtractor={(item) => item.id}
+      ListHeaderComponent={
+        plans.length > 0 ? (
+          <Text style={styles.prompt}>Which plan are you training today?</Text>
+        ) : null
+      }
       ListEmptyComponent={
-        <EmptyState message="No plans yet. Create one from the Home tab." />
+        <EmptyState message="No plans yet. Build one from the Home or Plans tab first." />
       }
       renderItem={({ item }) => (
         <PlanCard
           plan={item}
-          onPress={() => navigation.navigate("PlanDetail", { planId: item.id })}
+          onPress={() => navigation.navigate("RoutinePreview", { planId: item.id })}
         />
       )}
     />
@@ -50,4 +55,5 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   row: { justifyContent: "space-between" },
+  prompt: { ...typography.muted, fontSize: 14, marginBottom: spacing.xs },
 });
