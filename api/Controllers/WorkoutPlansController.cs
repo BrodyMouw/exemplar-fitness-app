@@ -41,6 +41,8 @@ public class WorkoutPlansController : ControllerBase
     {
         var plan = await _db.WorkoutPlans
             .Include(p => p.Routines.OrderBy(r => r.Order))
+                .ThenInclude(r => r.RoutineExercises.OrderBy(re => re.Order))
+                    .ThenInclude(re => re.Exercise)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (plan is null || plan.UserId != CurrentUserId)
@@ -58,6 +60,19 @@ public class WorkoutPlansController : ControllerBase
             Name = request.Name,
             Description = request.Description,
         };
+
+        // A plan covers one training week, so days-per-week is the routine count.
+        // Seeded here rather than client-side so the plan and its routines land
+        // in a single transaction.
+        var days = Math.Clamp(request.DaysPerWeek ?? 0, 0, 7);
+        for (var i = 0; i < days; i++)
+        {
+            plan.Routines.Add(new Routine
+            {
+                Name = $"Day {i + 1}",
+                Order = i,
+            });
+        }
 
         _db.WorkoutPlans.Add(plan);
         await _db.SaveChangesAsync();
@@ -93,4 +108,5 @@ public class WorkoutPlansController : ControllerBase
     }
 }
 
-public record WorkoutPlanRequest(string Name, string? Description);
+// DaysPerWeek is only honored on create - it seeds that many named routines.
+public record WorkoutPlanRequest(string Name, string? Description, int? DaysPerWeek = null);

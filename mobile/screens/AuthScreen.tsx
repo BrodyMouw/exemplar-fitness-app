@@ -3,14 +3,17 @@ import { useState } from "react";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { useSignIn, useSignUp, useSSO } from "@clerk/expo";
+import { View, Text, Platform, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  Platform,
-  StyleSheet,
-} from "react-native";
+  ScreenContainer,
+  Card,
+  PrimaryButton,
+  SecondaryButton,
+  TextField,
+  SectionLabel,
+} from "../components/ui";
+import { colors, spacing, radii, typography } from "../theme";
 
 // Preloads the browser for Android to reduce OAuth load time.
 function useWarmUpBrowser() {
@@ -96,50 +99,60 @@ export default function AuthScreen() {
 
   if (mode === "sign-up" && awaitingEmailCode) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Verify your email</Text>
-        <TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          placeholder="Verification code"
-          placeholderTextColor="#888"
-          value={code}
-          onChangeText={setCode}
-        />
-        {signUpErrors.fields.code && (
-          <Text style={styles.error}>{signUpErrors.fields.code.message}</Text>
-        )}
-        <Button
-          title="Verify"
-          onPress={handleVerify}
-          disabled={signUpStatus === "fetching"}
-        />
-      </View>
+      <ScreenContainer style={styles.centered}>
+        <Card>
+          <Text style={styles.title}>Verify your email</Text>
+          <Text style={styles.subtitle}>We sent a code to {emailAddress}.</Text>
+          <SectionLabel>Verification code</SectionLabel>
+          <TextField
+            keyboardType="numeric"
+            placeholder="123456"
+            value={code}
+            onChangeText={setCode}
+          />
+          {signUpErrors.fields.code && (
+            <Text style={styles.error}>{signUpErrors.fields.code.message}</Text>
+          )}
+          <PrimaryButton
+            title="Verify"
+            onPress={handleVerify}
+            disabled={signUpStatus === "fetching"}
+            style={styles.cta}
+          />
+          <SecondaryButton
+            title="Send a new code"
+            onPress={() => signUp.verifications.sendEmailCode()}
+            style={styles.secondaryCta}
+          />
+        </Card>
+      </ScreenContainer>
     );
   }
 
   if (mode === "sign-in" && signIn.status === "needs_client_trust") {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Verify your account</Text>
-        <TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          placeholder="Verification code"
-          placeholderTextColor="#888"
-          value={code}
-          onChangeText={setCode}
-        />
-        <Button
-          title="Verify"
-          onPress={async () => {
-            await signIn.mfa.verifyEmailCode({ code });
-            if (signIn.status === "complete") {
-              await signIn.finalize({ navigate: () => {} });
-            }
-          }}
-        />
-      </View>
+      <ScreenContainer style={styles.centered}>
+        <Card>
+          <Text style={styles.title}>Verify your account</Text>
+          <SectionLabel>Verification code</SectionLabel>
+          <TextField
+            keyboardType="numeric"
+            placeholder="123456"
+            value={code}
+            onChangeText={setCode}
+          />
+          <PrimaryButton
+            title="Verify"
+            style={styles.cta}
+            onPress={async () => {
+              await signIn.mfa.verifyEmailCode({ code });
+              if (signIn.status === "complete") {
+                await signIn.finalize({ navigate: () => {} });
+              }
+            }}
+          />
+        </Card>
+      </ScreenContainer>
     );
   }
 
@@ -150,75 +163,109 @@ export default function AuthScreen() {
       : signUpErrors.fields.emailAddress;
   const passwordError = activeErrors.fields.password;
 
+  const busy = (mode === "sign-in" ? signInStatus : signUpStatus) === "fetching";
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{mode === "sign-in" ? "Sign in" : "Sign up"}</Text>
+    <ScreenContainer scroll style={styles.centered}>
+      <View style={styles.brand}>
+        <View style={styles.brandMark}>
+          <Ionicons name="barbell" size={28} color={colors.primary} />
+        </View>
+        <Text style={styles.brandTitle}>Exemplar</Text>
+        <Text style={styles.brandSubtitle}>Train with intent.</Text>
+      </View>
 
-      <TextInput
-        style={styles.input}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        placeholder="Email"
-        placeholderTextColor="#888"
-        value={emailAddress}
-        onChangeText={setEmailAddress}
-      />
-      {emailError && <Text style={styles.error}>{emailError.message}</Text>}
-      <TextInput
-        style={styles.input}
-        secureTextEntry
-        placeholder="Password"
-        placeholderTextColor="#888"
-        value={password}
-        onChangeText={setPassword}
-      />
-      {passwordError && <Text style={styles.error}>{passwordError.message}</Text>}
+      <Card>
+        <Text style={styles.title}>
+          {mode === "sign-in" ? "Welcome back" : "Create your account"}
+        </Text>
 
-      <Button
-        title={mode === "sign-in" ? "Sign in" : "Sign up"}
-        onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
-        disabled={
-          !emailAddress ||
-          !password ||
-          (mode === "sign-in" ? signInStatus : signUpStatus) === "fetching"
-        }
-      />
+        <SectionLabel>Email</SectionLabel>
+        <TextField
+          autoCapitalize="none"
+          keyboardType="email-address"
+          placeholder="you@example.com"
+          value={emailAddress}
+          onChangeText={setEmailAddress}
+        />
+        {emailError && <Text style={styles.error}>{emailError.message}</Text>}
 
-      <View style={styles.spacer} />
-      <Button
-        title={googleLoading ? "Opening…" : "Continue with Google"}
-        onPress={handleGoogle}
-        disabled={googleLoading}
-      />
+        <SectionLabel>Password</SectionLabel>
+        <TextField
+          secureTextEntry
+          placeholder="••••••••"
+          value={password}
+          onChangeText={setPassword}
+        />
+        {passwordError && <Text style={styles.error}>{passwordError.message}</Text>}
 
-      <Text
-        style={styles.link}
-        onPress={() => setMode(mode === "sign-in" ? "sign-up" : "sign-in")}
-      >
-        {mode === "sign-in"
-          ? "Don't have an account? Sign up"
-          : "Already have an account? Sign in"}
-      </Text>
+        <PrimaryButton
+          title={mode === "sign-in" ? "Sign in" : "Sign up"}
+          onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
+          disabled={!emailAddress || !password || busy}
+          style={styles.cta}
+        />
+
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <SecondaryButton
+          title={googleLoading ? "Opening…" : "Continue with Google"}
+          onPress={handleGoogle}
+          disabled={googleLoading}
+        />
+
+        <Text
+          style={styles.link}
+          onPress={() => setMode(mode === "sign-in" ? "sign-up" : "sign-in")}
+        >
+          {mode === "sign-in"
+            ? "Don't have an account? Sign up"
+            : "Already have an account? Sign in"}
+        </Text>
+      </Card>
 
       {/* Required for sign-up flows. Clerk's bot protection is enabled by default. */}
       <View nativeID="clerk-captcha" />
-    </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 80, backgroundColor: "#fff" },
-  title: { fontSize: 20, fontWeight: "600", marginBottom: 16, color: "#000" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    color: "#000",
-    backgroundColor: "#fff",
+  centered: { justifyContent: "center", flexGrow: 1, paddingTop: spacing.xxl },
+  brand: { alignItems: "center", marginBottom: spacing.xl },
+  brandMark: {
+    width: 60,
+    height: 60,
+    borderRadius: radii.lg,
+    backgroundColor: colors.primaryMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
   },
-  spacer: { height: 12 },
-  error: { color: "#d32f2f", fontSize: 12, marginTop: -8, marginBottom: 8 },
-  link: { marginTop: 16, color: "#0a7ea4", textAlign: "center" },
+  brandTitle: { ...typography.title },
+  brandSubtitle: { ...typography.muted, marginTop: spacing.xs },
+  title: { ...typography.heading, marginBottom: spacing.sm },
+  subtitle: { ...typography.muted, marginBottom: spacing.sm },
+  cta: { marginTop: spacing.lg },
+  secondaryCta: { marginTop: spacing.md },
+  error: { color: colors.danger, fontSize: 12, marginTop: spacing.xs },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    marginVertical: spacing.lg,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { ...typography.muted, fontSize: 12 },
+  link: {
+    marginTop: spacing.lg,
+    color: colors.primary,
+    textAlign: "center",
+    fontWeight: "600",
+    fontSize: 14,
+  },
 });

@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { useApi } from "../api/client";
 import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  FlatList,
-  StyleSheet,
-} from "react-native";
-import axios from "axios";
-import { useAuth } from "@clerk/expo";
-import { API_BASE } from "../config";
+  ScreenContainer,
+  Card,
+  PrimaryButton,
+  TextField,
+  SectionLabel,
+  EmptyState,
+} from "../components/ui";
+import { spacing, typography } from "../theme";
 
 type WeightEntry = {
   id: string;
@@ -19,82 +20,75 @@ type WeightEntry = {
 };
 
 export default function WeightScreen() {
-  const { getToken } = useAuth();
+  const api = useApi();
   const [weight, setWeight] = useState("");
   const [entries, setEntries] = useState<WeightEntry[]>([]);
 
-  const authHeaders = async () => {
-    const token = await getToken();
-    return { Authorization: `Bearer ${token}` };
-  };
+  const loadEntries = useCallback(async () => {
+    setEntries(await api.get<WeightEntry[]>("/api/weightentries"));
+  }, [api]);
 
-  const loadEntries = async () => {
-    const res = await axios.get<WeightEntry[]>(`${API_BASE}/api/weightentries`, {
-      headers: await authHeaders(),
-    });
-    setEntries(res.data);
-  };
-
-  useEffect(() => {
-    loadEntries();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadEntries();
+    }, [loadEntries]),
+  );
 
   const logWeight = async () => {
     if (!weight) return;
-    await axios.post(
-      `${API_BASE}/api/weightentries`,
-      { weightKg: parseFloat(weight) },
-      { headers: await authHeaders() },
-    );
+    await api.post("/api/weightentries", { weightKg: parseFloat(weight) });
     setWeight("");
     loadEntries();
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Log your weight</Text>
-      <TextInput
-        style={styles.input}
-        keyboardType="decimal-pad"
-        placeholder="Weight in kg"
-        placeholderTextColor="#888"
-        value={weight}
-        onChangeText={setWeight}
-      />
-      <Button title="Log weight" onPress={logWeight} />
-      <FlatList
-        data={entries}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Text style={styles.entry}>
-            {item.loggedOn}: {item.weightKg} kg
-          </Text>
-        )}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-      />
-    </View>
+    <ScreenContainer scroll style={styles.content}>
+      <Text style={styles.title}>Body weight</Text>
+
+      <Card>
+        <SectionLabel>Today's weight (kg)</SectionLabel>
+        <TextField
+          keyboardType="decimal-pad"
+          placeholder="e.g. 82.5"
+          value={weight}
+          onChangeText={setWeight}
+        />
+        <PrimaryButton
+          title="Log weight"
+          onPress={logWeight}
+          disabled={!weight}
+          style={styles.cta}
+        />
+      </Card>
+
+      <Text style={styles.sectionTitle}>History</Text>
+
+      {entries.length === 0 ? (
+        <EmptyState message="No entries yet." />
+      ) : (
+        entries.map((entry) => (
+          <Card key={entry.id}>
+            <View style={styles.entryRow}>
+              <Text style={styles.entryDate}>{entry.loggedOn}</Text>
+              <Text style={styles.entryWeight}>{entry.weightKg} kg</Text>
+            </View>
+          </Card>
+        ))
+      )}
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 60, backgroundColor: "#fff" },
-  title: { fontSize: 20, fontWeight: "600", marginBottom: 16, color: "#000" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    color: "#000",
-    backgroundColor: "#fff",
+  content: { paddingTop: spacing.xxl + spacing.xl },
+  title: { ...typography.title },
+  cta: { marginTop: spacing.lg },
+  sectionTitle: { ...typography.heading, marginTop: spacing.lg },
+  entryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  list: { marginTop: 24 },
-  listContent: { paddingBottom: 100 },
-  entry: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    color: "#000",
-  },
+  entryDate: { ...typography.muted, fontSize: 14 },
+  entryWeight: { ...typography.body, fontWeight: "700" },
 });
