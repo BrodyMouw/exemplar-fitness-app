@@ -20,18 +20,20 @@ public class WorkoutPlansController : ControllerBase
 
     private string CurrentUserId => User.FindFirst("sub")!.Value;
 
+    // Counts are projected in SQL rather than loading the routine graph, so the
+    // list stays cheap while still giving the cards something to show.
     [HttpGet]
-    public async Task<ActionResult<List<WorkoutPlan>>> GetAll()
+    public async Task<ActionResult<List<WorkoutPlanSummary>>> GetAll()
     {
         var plans = await _db.WorkoutPlans
             .Where(p => p.UserId == CurrentUserId)
-            .Select(p => new WorkoutPlan
-            {
-                Id = p.Id,
-                UserId = p.UserId,
-                Name = p.Name,
-                Description = p.Description,
-            })
+            .OrderBy(p => p.Name)
+            .Select(p => new WorkoutPlanSummary(
+                p.Id,
+                p.Name,
+                p.Description,
+                p.Routines.Count,
+                p.Routines.SelectMany(r => r.RoutineExercises).Count()))
             .ToListAsync();
         return Ok(plans);
     }
@@ -107,6 +109,13 @@ public class WorkoutPlansController : ControllerBase
         return NoContent();
     }
 }
+
+public record WorkoutPlanSummary(
+    Guid Id,
+    string Name,
+    string? Description,
+    int RoutineCount,
+    int ExerciseCount);
 
 // DaysPerWeek is only honored on create - it seeds that many named routines.
 public record WorkoutPlanRequest(string Name, string? Description, int? DaysPerWeek = null);

@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HomeScreen from "../screens/HomeScreen";
 import PlansStack, { type PlansStackParamList } from "./PlansStack";
-import WorkoutScreen from "../screens/WorkoutScreen";
+import WorkoutStack, { type WorkoutStackParamList } from "./WorkoutStack";
 import WeightScreen from "../screens/WeightScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import { colors, radii } from "../theme";
@@ -12,7 +12,7 @@ import { colors, radii } from "../theme";
 export type TabParamList = {
   Home: undefined;
   Plans: NavigatorScreenParams<PlansStackParamList>;
-  Workout: undefined;
+  Workout: NavigatorScreenParams<WorkoutStackParamList>;
   Weight: undefined;
   Profile: undefined;
 };
@@ -69,7 +69,7 @@ export default function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Plans" component={PlansStack} />
-      <Tab.Screen name="Workout" component={WorkoutScreen} />
+      <Tab.Screen name="Workout" component={WorkoutStack} />
       <Tab.Screen
         name="Weight"
         component={WeightScreen}

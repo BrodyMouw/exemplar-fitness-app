@@ -10,7 +10,28 @@ export const colors = {
   border: "#E5E7EB",
   danger: "#EF4444",
   dangerMuted: "#FEF2F2",
+  success: "#16A34A",
+  successMuted: "#F0FDF4",
 };
+
+// Plan cards pick one of these deterministically from their id, so a grid of
+// plans reads as varied without any of it being random per render.
+export const cardAccents = [
+  { bg: "#EEF2FF", fg: "#4F46E5" },
+  { bg: "#FFF1ED", fg: "#FF7A59" },
+  { bg: "#F0FDF4", fg: "#16A34A" },
+  { bg: "#FEF3C7", fg: "#D97706" },
+  { bg: "#ECFEFF", fg: "#0891B2" },
+  { bg: "#FAE8FF", fg: "#C026D3" },
+];
+
+export function accentForId(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  }
+  return cardAccents[Math.abs(hash) % cardAccents.length];
+}
 
 export const spacing = {
   xs: 4,
