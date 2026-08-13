@@ -1,20 +1,30 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import type { NavigatorScreenParams } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HomeScreen from "../screens/HomeScreen";
-import CommunityScreen from "../screens/CommunityScreen";
-import PlansStack from "./PlansStack";
+import PlansStack, { type PlansStackParamList } from "./PlansStack";
+import WorkoutScreen from "../screens/WorkoutScreen";
 import WeightScreen from "../screens/WeightScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import { colors, radii } from "../theme";
 
-const Tab = createBottomTabNavigator();
+export type TabParamList = {
+  Home: undefined;
+  Plans: NavigatorScreenParams<PlansStackParamList>;
+  Workout: undefined;
+  Weight: undefined;
+  Profile: undefined;
+};
+
+const Tab = createBottomTabNavigator<TabParamList>();
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const ICONS: Record<string, { focused: IconName; unfocused: IconName }> = {
+const ICONS: Record<keyof TabParamList, { focused: IconName; unfocused: IconName }> = {
   Home: { focused: "home", unfocused: "home-outline" },
-  Community: { focused: "people", unfocused: "people-outline" },
-  Plans: { focused: "barbell", unfocused: "barbell-outline" },
+  Plans: { focused: "list", unfocused: "list-outline" },
+  Workout: { focused: "barbell", unfocused: "barbell-outline" },
   Weight: { focused: "stats-chart", unfocused: "stats-chart-outline" },
   Profile: { focused: "person-circle", unfocused: "person-circle-outline" },
 };
@@ -26,8 +36,8 @@ export default function TabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: "#0a7ea4",
-        tabBarInactiveTintColor: "#999",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
         tabBarItemStyle: { paddingTop: 8, paddingBottom: 6 },
         tabBarStyle: {
@@ -36,11 +46,11 @@ export default function TabNavigator() {
           right: 20,
           bottom: insets.bottom + 4,
           height: 76,
-          borderRadius: 28,
-          backgroundColor: "#fff",
+          borderRadius: radii.lg + 8,
+          backgroundColor: colors.surface,
           borderTopWidth: 0,
           elevation: 8,
-          shadowColor: "#000",
+          shadowColor: "#0F172A",
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.12,
           shadowRadius: 12,
@@ -58,12 +68,12 @@ export default function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Community" component={CommunityScreen} />
       <Tab.Screen name="Plans" component={PlansStack} />
+      <Tab.Screen name="Workout" component={WorkoutScreen} />
       <Tab.Screen
         name="Weight"
         component={WeightScreen}
-        options={{ tabBarLabel: "Weight tracking" }}
+        options={{ tabBarLabel: "Weight" }}
       />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

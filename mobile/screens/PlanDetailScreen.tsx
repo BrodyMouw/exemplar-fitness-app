@@ -1,232 +1,267 @@
-import { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  FlatList,
-  Pressable,
-  StyleSheet,
-} from "react-native";
+import { useState, useCallback, useEffect } from "react";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import axios from "axios";
-import { useAuth } from "@clerk/expo";
-import { API_BASE } from "../config";
+import { useApi } from "../api/client";
+import type { Exercise, WorkoutPlan } from "../api/types";
 import type { PlansStackParamList } from "../navigation/PlansStack";
+import RoutineSection from "../components/RoutineSection";
+import {
+  ScreenContainer,
+  Card,
+  Chip,
+  IconButton,
+  PrimaryButton,
+  SecondaryButton,
+  SelectPill,
+  TextField,
+  SectionLabel,
+  EmptyState,
+  confirmDelete,
+} from "../components/ui";
+import { colors, spacing, typography } from "../theme";
 
-type Exercise = {
-  id: string;
-  name: string;
-  sets: number;
-  reps: number;
-  order: number;
-};
-
-type WorkoutPlan = {
-  id: string;
-  name: string;
-  description?: string;
-  exercises: Exercise[];
-};
+const MAX_ROUTINES = 7;
 
 type Props = NativeStackScreenProps<PlansStackParamList, "PlanDetail">;
 
 export default function PlanDetailScreen({ route, navigation }: Props) {
   const { planId } = route.params;
-  const { getToken } = useAuth();
+  const api = useApi();
 
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
-  const [editingPlan, setEditingPlan] = useState(false);
+  const [catalog, setCatalog] = useState<Exercise[]>([]);
+  const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
+
+  const [editing, setEditing] = useState(false);
   const [planName, setPlanName] = useState("");
   const [planDescription, setPlanDescription] = useState("");
 
-  const [exerciseName, setExerciseName] = useState("");
-  const [sets, setSets] = useState("");
-  const [reps, setReps] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [routineName, setRoutineName] = useState("");
+  const [workoutType, setWorkoutType] = useState("");
 
-  const authHeaders = async () => {
-    const token = await getToken();
-    return { Authorization: `Bearer ${token}` };
-  };
-
-  const loadPlan = async () => {
-    const res = await axios.get<WorkoutPlan>(
-      `${API_BASE}/api/workoutplans/${planId}`,
-      { headers: await authHeaders() },
-    );
-    setPlan(res.data);
-    setPlanName(res.data.name);
-    setPlanDescription(res.data.description ?? "");
-  };
+  const load = useCallback(async () => {
+    const [planData, catalogData] = await Promise.all([
+      api.get<WorkoutPlan>(`/api/workoutplans/${planId}`),
+      api.get<Exercise[]>("/api/exercises"),
+    ]);
+    setPlan(planData);
+    setCatalog(catalogData);
+    setPlanName(planData.name);
+    setPlanDescription(planData.description ?? "");
+    navigation.setOptions({ title: planData.name });
+  }, [api, planId, navigation]);
 
   useFocusEffect(
     useCallback(() => {
-      loadPlan();
-    }, [planId]),
+      load();
+    }, [load]),
   );
 
-  const savePlanEdits = async () => {
-    await axios.put(
-      `${API_BASE}/api/workoutplans/${planId}`,
-      { name: planName, description: planDescription || null },
-      { headers: await authHeaders() },
-    );
-    setEditingPlan(false);
-    loadPlan();
-  };
+  // Keep a routine selected: default to the first, and recover if the
+  // selected one was just deleted.
+  useEffect(() => {
+    if (!plan) return;
+    const stillExists = plan.routines.some((r) => r.id === selectedRoutineId);
+    if (!stillExists) {
+      setSelectedRoutineId(plan.routines[0]?.id ?? null);
+    }
+  }, [plan, selectedRoutineId]);
 
-  const deletePlan = async () => {
-    await axios.delete(`${API_BASE}/api/workoutplans/${planId}`, {
-      headers: await authHeaders(),
+  const savePlan = async () => {
+    await api.put(`/api/workoutplans/${planId}`, {
+      name: planName.trim(),
+      description: planDescription.trim() || null,
     });
-    navigation.goBack();
+    setEditing(false);
+    load();
   };
 
-  const addExercise = async () => {
-    if (!exerciseName || !sets || !reps) return;
-    await axios.post(
-      `${API_BASE}/api/workoutplans/${planId}/exercises`,
-      { name: exerciseName, sets: parseInt(sets, 10), reps: parseInt(reps, 10) },
-      { headers: await authHeaders() },
+  const deletePlan = () => {
+    confirmDelete(
+      "Delete plan",
+      `Delete ${plan?.name} and all of its routines? This can't be undone.`,
+      async () => {
+        await api.del(`/api/workoutplans/${planId}`);
+        navigation.goBack();
+      },
     );
-    setExerciseName("");
-    setSets("");
-    setReps("");
-    loadPlan();
   };
 
-  const deleteExercise = async (id: string) => {
-    await axios.delete(`${API_BASE}/api/exercises/${id}`, {
-      headers: await authHeaders(),
+  const addRoutine = async () => {
+    if (!routineName.trim()) return;
+    await api.post(`/api/workoutplans/${planId}/routines`, {
+      name: routineName.trim(),
+      workoutType: workoutType.trim(),
     });
-    loadPlan();
+    setRoutineName("");
+    setWorkoutType("");
+    setAdding(false);
+    load();
   };
 
   if (!plan) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Loading…</Text>
-      </View>
+      <ScreenContainer>
+        <EmptyState message="Loading…" />
+      </ScreenContainer>
     );
   }
 
+  const atRoutineLimit = plan.routines.length >= MAX_ROUTINES;
+  const selectedRoutine =
+    plan.routines.find((r) => r.id === selectedRoutineId) ?? null;
+
   return (
-    <View style={styles.container}>
-      {editingPlan ? (
-        <>
-          <TextInput
-            style={styles.input}
-            placeholder="Plan name"
-            placeholderTextColor="#888"
-            value={planName}
-            onChangeText={setPlanName}
+    <ScreenContainer scroll>
+      <Card>
+        {editing ? (
+          <>
+            <SectionLabel>Name</SectionLabel>
+            <TextField value={planName} onChangeText={setPlanName} />
+            <SectionLabel>Description</SectionLabel>
+            <TextField
+              value={planDescription}
+              onChangeText={setPlanDescription}
+              placeholder="Optional"
+            />
+            <View style={styles.buttonRow}>
+              <SecondaryButton
+                title="Cancel"
+                onPress={() => setEditing(false)}
+                style={styles.flexButton}
+              />
+              <PrimaryButton
+                title="Save"
+                onPress={savePlan}
+                disabled={!planName.trim()}
+                style={styles.flexButton}
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.planHeaderRow}>
+              <View style={styles.planHeaderMain}>
+                <Text style={styles.planTitle}>{plan.name}</Text>
+                {plan.description ? (
+                  <Text style={styles.planDescription}>{plan.description}</Text>
+                ) : null}
+              </View>
+              <IconButton name="ellipsis-horizontal" onPress={() => setEditing(true)} />
+            </View>
+            <View style={styles.metaRow}>
+              <Chip
+                label={`${plan.routines.length} of ${MAX_ROUTINES} days`}
+                tone="primary"
+              />
+            </View>
+            <SecondaryButton
+              title="Delete plan"
+              tone="danger"
+              onPress={deletePlan}
+              style={styles.deleteButton}
+            />
+          </>
+        )}
+      </Card>
+
+      <View style={styles.routineRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.routineStrip}
+          style={styles.routineScroll}
+        >
+          {plan.routines.map((routine) => (
+            <SelectPill
+              key={routine.id}
+              label={routine.name}
+              selected={routine.id === selectedRoutineId}
+              onPress={() => setSelectedRoutineId(routine.id)}
+            />
+          ))}
+        </ScrollView>
+        {!adding && !atRoutineLimit && (
+          <IconButton
+            name="add"
+            color={colors.primary}
+            onPress={() => {
+              setRoutineName(`Day ${plan.routines.length + 1}`);
+              setAdding(true);
+            }}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Description (optional)"
-            placeholderTextColor="#888"
-            value={planDescription}
-            onChangeText={setPlanDescription}
+        )}
+      </View>
+
+      {atRoutineLimit && !adding ? (
+        <Text style={styles.limitNote}>
+          A plan covers one week — seven routines is the max.
+        </Text>
+      ) : null}
+
+      {adding && (
+        <Card>
+          <SectionLabel>Routine name</SectionLabel>
+          <TextField
+            placeholder="e.g. Day 4"
+            value={routineName}
+            onChangeText={setRoutineName}
           />
-          <Button title="Save" onPress={savePlanEdits} />
-        </>
-      ) : (
-        <>
-          <Text style={styles.title}>{plan.name}</Text>
-          {plan.description && (
-            <Text style={styles.subtitle}>{plan.description}</Text>
-          )}
-          <Button title="Edit plan" onPress={() => setEditingPlan(true)} />
-        </>
+          <SectionLabel>Workout type</SectionLabel>
+          <TextField
+            placeholder="e.g. Push, Legs, Cardio"
+            value={workoutType}
+            onChangeText={setWorkoutType}
+          />
+          <View style={styles.buttonRow}>
+            <SecondaryButton
+              title="Cancel"
+              onPress={() => setAdding(false)}
+              style={styles.flexButton}
+            />
+            <PrimaryButton
+              title="Add routine"
+              onPress={addRoutine}
+              disabled={!routineName.trim()}
+              style={styles.flexButton}
+            />
+          </View>
+        </Card>
       )}
 
-      <View style={styles.spacer} />
-      <Text style={styles.sectionTitle}>Exercises</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Exercise name"
-        placeholderTextColor="#888"
-        value={exerciseName}
-        onChangeText={setExerciseName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Sets"
-        placeholderTextColor="#888"
-        keyboardType="number-pad"
-        value={sets}
-        onChangeText={setSets}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Reps"
-        placeholderTextColor="#888"
-        keyboardType="number-pad"
-        value={reps}
-        onChangeText={setReps}
-      />
-      <Button title="Add exercise" onPress={addExercise} />
-
-      <FlatList
-        data={plan.exercises}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <Pressable
-              style={styles.rowMain}
-              onPress={() =>
-                navigation.navigate("ExerciseLog", {
-                  exerciseId: item.id,
-                  exerciseName: item.name,
-                })
-              }
-            >
-              <Text style={styles.rowTitle}>{item.name}</Text>
-              <Text style={styles.rowSubtitle}>
-                {item.sets} sets x {item.reps} reps
-              </Text>
-            </Pressable>
-            <Button title="Delete" color="#d32f2f" onPress={() => deleteExercise(item.id)} />
-          </View>
-        )}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-      />
-
-      <View style={styles.spacer} />
-      <Button title="Delete plan" color="#d32f2f" onPress={deletePlan} />
-    </View>
+      {selectedRoutine ? (
+        <RoutineSection
+          key={selectedRoutine.id}
+          routine={selectedRoutine}
+          catalog={catalog}
+          onChanged={load}
+        />
+      ) : (
+        !adding && (
+          <EmptyState message="No routines yet. Add your first training day." />
+        )
+      )}
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: "#fff" },
-  title: { fontSize: 20, fontWeight: "600", color: "#000" },
-  subtitle: { fontSize: 14, color: "#888", marginTop: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: "600", color: "#000", marginBottom: 12 },
-  spacer: { height: 20 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    color: "#000",
-    backgroundColor: "#fff",
-  },
-  list: { marginTop: 12 },
-  listContent: { paddingBottom: 100 },
-  row: {
+  planHeaderRow: { flexDirection: "row", alignItems: "flex-start" },
+  planHeaderMain: { flex: 1, paddingRight: spacing.md },
+  planTitle: { ...typography.title, fontSize: 22 },
+  planDescription: { ...typography.muted, marginTop: spacing.xs, fontSize: 14 },
+  metaRow: { flexDirection: "row", marginTop: spacing.md },
+  deleteButton: { marginTop: spacing.lg },
+  routineRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    gap: spacing.sm,
   },
-  rowMain: { flex: 1 },
-  rowTitle: { fontSize: 16, fontWeight: "600", color: "#000" },
-  rowSubtitle: { fontSize: 13, color: "#888", marginTop: 2 },
+  routineScroll: { flex: 1 },
+  routineStrip: { gap: spacing.sm, paddingVertical: spacing.xs },
+  limitNote: { ...typography.muted },
+  buttonRow: { flexDirection: "row", gap: spacing.md, marginTop: spacing.lg },
+  flexButton: { flex: 1 },
 });

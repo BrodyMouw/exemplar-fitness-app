@@ -1,19 +1,26 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import PlansListScreen from "../screens/PlansListScreen";
 import PlanDetailScreen from "../screens/PlanDetailScreen";
-import ExerciseLogScreen from "../screens/ExerciseLogScreen";
+import { colors } from "../theme";
 
 export type PlansStackParamList = {
   PlansList: undefined;
   PlanDetail: { planId: string };
-  ExerciseLog: { exerciseId: string; exerciseName: string };
 };
 
 const Stack = createNativeStackNavigator<PlansStackParamList>();
 
 export default function PlansStack() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
+        headerTintColor: colors.primary,
+        headerTitleStyle: { color: colors.text, fontWeight: "700" },
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    >
       <Stack.Screen
         name="PlansList"
         component={PlansListScreen}
@@ -23,11 +30,6 @@ export default function PlansStack() {
         name="PlanDetail"
         component={PlanDetailScreen}
         options={{ title: "Plan" }}
-      />
-      <Stack.Screen
-        name="ExerciseLog"
-        component={ExerciseLogScreen}
-        options={({ route }) => ({ title: route.params.exerciseName })}
       />
     </Stack.Navigator>
   );
