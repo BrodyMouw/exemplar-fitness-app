@@ -36,6 +36,9 @@ public class WorkoutLogsController : ControllerBase
         {
             UserId = CurrentUserId,
             RoutineExerciseId = routineExerciseId,
+            // Copied off the prescription so the log still knows what it was
+            // if that prescription is later deleted.
+            ExerciseId = routineExercise.ExerciseId,
             ActualSets = request.ActualSets,
             ActualReps = request.ActualReps,
             ActualTimeSeconds = request.ActualTimeSeconds,

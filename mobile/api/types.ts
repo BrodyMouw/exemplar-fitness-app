@@ -91,7 +91,10 @@ export type WeightEntry = {
 
 export type WorkoutLog = {
   id: string;
-  routineExerciseId: string;
+  // What was performed - kept even if the prescription below is deleted.
+  exerciseId: string;
+  // Null once the plan/routine/exercise this was logged against is removed.
+  routineExerciseId?: string;
   completedAt: string;
   actualSets: number;
   actualReps?: number;
