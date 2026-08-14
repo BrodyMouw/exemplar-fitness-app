@@ -31,13 +31,14 @@ public class StatsController : ControllerBase
     [HttpGet("consistency")]
     public async Task<ActionResult<ConsistencyStats>> GetConsistency()
     {
-        // WorkoutLog has no navigation property to RoutineExercise, so the
-        // relationship is joined explicitly rather than traversed.
+        // Left join: a log whose plan has since been deleted has no routine to
+        // group by, but it still happened and still counts.
         var rows = await (
             from log in _db.WorkoutLogs
             where log.UserId == CurrentUserId
-            join re in _db.RoutineExercises on log.RoutineExerciseId equals re.Id
-            select new { log.CompletedAt, re.RoutineId })
+            join re in _db.RoutineExercises on log.RoutineExerciseId equals re.Id into matches
+            from re in matches.DefaultIfEmpty()
+            select new { log.CompletedAt, RoutineId = (Guid?)re.RoutineId })
             .ToListAsync();
 
         // There's no session entity, so a "workout" is derived: one routine
@@ -87,11 +88,12 @@ public class StatsController : ControllerBase
     [HttpGet("exercise-progress")]
     public async Task<ActionResult<List<ExerciseProgress>>> GetExerciseProgress()
     {
+        // Joined straight to the catalog on the log's own ExerciseId - history
+        // no longer depends on the prescription that produced it still existing.
         var logs = await (
             from log in _db.WorkoutLogs
+            join ex in _db.Exercises on log.ExerciseId equals ex.Id
             where log.UserId == CurrentUserId
-            join re in _db.RoutineExercises on log.RoutineExerciseId equals re.Id
-            join ex in _db.Exercises on re.ExerciseId equals ex.Id
             select new
             {
                 log.CompletedAt,
@@ -160,9 +162,8 @@ public class StatsController : ControllerBase
     {
         var logs = await (
             from log in _db.WorkoutLogs
-            join re in _db.RoutineExercises on log.RoutineExerciseId equals re.Id
-            join ex in _db.Exercises on re.ExerciseId equals ex.Id
-            where log.UserId == CurrentUserId && re.ExerciseId == exerciseId
+            join ex in _db.Exercises on log.ExerciseId equals ex.Id
+            where log.UserId == CurrentUserId && log.ExerciseId == exerciseId
             select new
             {
                 log.CompletedAt,

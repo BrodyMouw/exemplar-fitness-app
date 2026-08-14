@@ -26,6 +26,26 @@ public class AppDbContext : DbContext
             .HasForeignKey(re => re.ExerciseId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Logged history is permanent: it records its catalog exercise directly,
+        // so deleting the plan that prescribed it only clears the back-link.
+        modelBuilder.Entity<WorkoutLog>()
+            .HasOne(l => l.User)
+            .WithMany()
+            .HasForeignKey(l => l.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WorkoutLog>()
+            .HasOne(l => l.Exercise)
+            .WithMany()
+            .HasForeignKey(l => l.ExerciseId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<WorkoutLog>()
+            .HasOne(l => l.RoutineExercise)
+            .WithMany()
+            .HasForeignKey(l => l.RoutineExerciseId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.Entity<Exercise>().HasData(
             new Exercise { Id = Guid.Parse("00000000-0000-0000-0000-000000000001"), Name = "Bench Press", Description = "Barbell press lying on a flat bench.", Mode = ExerciseMode.Reps, WeightType = ExerciseWeightType.External, TargetMuscle = "Chest" },
             new Exercise { Id = Guid.Parse("00000000-0000-0000-0000-000000000002"), Name = "Squat", Description = "Barbell back squat.", Mode = ExerciseMode.Reps, WeightType = ExerciseWeightType.External, TargetMuscle = "Legs" },
