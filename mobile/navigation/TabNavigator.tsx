@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HomeScreen from "../screens/HomeScreen";
 import PlansStack, { type PlansStackParamList } from "./PlansStack";
 import WorkoutStack, { type WorkoutStackParamList } from "./WorkoutStack";
-import WeightScreen from "../screens/WeightScreen";
+import ProgressStack, { type ProgressStackParamList } from "./ProgressStack";
 import ProfileScreen from "../screens/ProfileScreen";
 import { colors, radii } from "../theme";
 
@@ -13,7 +13,7 @@ export type TabParamList = {
   Home: undefined;
   Plans: NavigatorScreenParams<PlansStackParamList>;
   Workout: NavigatorScreenParams<WorkoutStackParamList>;
-  Weight: undefined;
+  Progress: NavigatorScreenParams<ProgressStackParamList>;
   Profile: undefined;
 };
 
@@ -25,7 +25,7 @@ const ICONS: Record<keyof TabParamList, { focused: IconName; unfocused: IconName
   Home: { focused: "home", unfocused: "home-outline" },
   Plans: { focused: "list", unfocused: "list-outline" },
   Workout: { focused: "barbell", unfocused: "barbell-outline" },
-  Weight: { focused: "stats-chart", unfocused: "stats-chart-outline" },
+  Progress: { focused: "stats-chart", unfocused: "stats-chart-outline" },
   Profile: { focused: "person-circle", unfocused: "person-circle-outline" },
 };
 
@@ -70,11 +70,7 @@ export default function TabNavigator() {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Plans" component={PlansStack} />
       <Tab.Screen name="Workout" component={WorkoutStack} />
-      <Tab.Screen
-        name="Weight"
-        component={WeightScreen}
-        options={{ tabBarLabel: "Weight" }}
-      />
+      <Tab.Screen name="Progress" component={ProgressStack} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
