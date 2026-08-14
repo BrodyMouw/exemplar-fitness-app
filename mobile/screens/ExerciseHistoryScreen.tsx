@@ -5,6 +5,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useApi } from "../api/client";
 import type { ExerciseHistory } from "../api/types";
 import type { ProgressStackParamList } from "../navigation/ProgressStack";
+import { useUnit } from "../UnitContext";
+import { toDisplayWeight, unitLabel } from "../units";
 import BarChart, { type Bar } from "../components/BarChart";
 import {
   ScreenContainer,
@@ -33,6 +35,7 @@ function round(n: number): number {
 export default function ExerciseHistoryScreen({ route }: Props) {
   const { exerciseId } = route.params;
   const api = useApi();
+  const { unit: prefUnit } = useUnit();
   const [history, setHistory] = useState<ExerciseHistory | null>(null);
   const [missing, setMissing] = useState(false);
 
@@ -61,18 +64,26 @@ export default function ExerciseHistoryScreen({ route }: Props) {
     );
   }
 
-  const { points, unit } = history;
+  const { points } = history;
+
+  // Only weight-metric exercises convert; reps and seconds pass straight
+  // through with the unit the API reported.
+  const isWeight = history.metric === "Weight";
+  const toDisplay = (value: number) =>
+    isWeight ? toDisplayWeight(value, prefUnit) : value;
+  const unit = isWeight ? unitLabel(prefUnit) : history.unit;
+
   const values = points.map((p) => p.value);
-  const first = values[0];
-  const latest = values[values.length - 1];
-  const best = Math.max(...values);
+  const first = toDisplay(values[0]);
+  const latest = toDisplay(values[values.length - 1]);
+  const best = toDisplay(Math.max(...values));
   const delta = latest - first;
 
   // Newest points matter most; keep the tail when there's a long history.
   const charted = points.slice(-MAX_POINTS);
   const bars: Bar[] = charted.map((p) => ({
     label: shortDate(p.completedAt),
-    value: p.value,
+    value: toDisplay(p.value),
   }));
 
   return (
@@ -145,7 +156,7 @@ export default function ExerciseHistoryScreen({ route }: Props) {
               </Text>
             </View>
             <Text style={styles.logValue}>
-              {round(p.value)} {unit}
+              {round(toDisplay(p.value))} {unit}
             </Text>
           </View>
         </Card>

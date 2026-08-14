@@ -7,6 +7,14 @@ import type { Routine, RoutineExercise, WorkoutLog } from "../api/types";
 import type { WorkoutStackParamList } from "../navigation/WorkoutStack";
 import { modeIcon, prescriptionSummary } from "../components/RoutineSection";
 import CountdownTimer from "../components/CountdownTimer";
+import { useUnit } from "../UnitContext";
+import {
+  formatWeight,
+  toDisplayWeight,
+  toKg,
+  unitLabel,
+  weightStepperConfig,
+} from "../units";
 import {
   ScreenContainer,
   Card,
@@ -43,6 +51,7 @@ function seedEntry(item: RoutineExercise): Entry {
 export default function RunnerScreen({ route, navigation }: Props) {
   const { routineId } = route.params;
   const api = useApi();
+  const { unit } = useUnit();
 
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [index, setIndex] = useState(0);
@@ -187,7 +196,7 @@ export default function RunnerScreen({ route, navigation }: Props) {
           <Text style={styles.description}>{exercise.description}</Text>
         ) : null}
         <View style={styles.planRow}>
-          <Chip label={`Plan: ${prescriptionSummary(current)}`} tone="neutral" />
+          <Chip label={`Plan: ${prescriptionSummary(current, unit)}`} tone="neutral" />
         </View>
       </Card>
 
@@ -235,21 +244,22 @@ export default function RunnerScreen({ route, navigation }: Props) {
 
         {needsWeight && (
           <>
-            <SectionLabel>Weight used (kg)</SectionLabel>
+            <SectionLabel>Weight used ({unitLabel(unit)})</SectionLabel>
             <Stepper
-              value={entry.weight}
-              onChange={(weight) => patchEntry({ weight })}
+              value={toDisplayWeight(entry.weight, unit)}
+              onChange={(v) => patchEntry({ weight: toKg(v, unit) })}
               min={0}
-              max={500}
-              step={2.5}
-              decimals={1}
+              {...weightStepperConfig(unit)}
             />
             <View style={styles.deltaRow}>
               <Chip
                 label={
                   weightDelta === 0
-                    ? `As prescribed (${prescribedWeight} kg)`
-                    : `${weightDelta > 0 ? "+" : "−"}${Math.abs(weightDelta)} kg vs plan`
+                    ? `As prescribed (${formatWeight(prescribedWeight, unit)})`
+                    : `${weightDelta > 0 ? "+" : "−"}${formatWeight(
+                        Math.abs(weightDelta),
+                        unit,
+                      )} vs plan`
                 }
                 tone={
                   weightDelta === 0 ? "neutral" : weightDelta > 0 ? "success" : "accent"

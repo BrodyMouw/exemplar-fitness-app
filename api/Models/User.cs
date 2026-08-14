@@ -7,6 +7,7 @@ public class User
     public string DisplayName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string SubscriptionTier { get; set; } = "free";
+    public WeightUnit WeightUnit { get; set; } = WeightUnit.Kg;
 
     public List<WeightEntry> WeightEntries { get; set; } = new();
     public List<WorkoutPlan> WorkoutPlans { get; set; } = new();

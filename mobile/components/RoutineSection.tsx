@@ -16,6 +16,16 @@ import {
   SectionLabel,
   confirmDelete,
 } from "./ui";
+import { useUnit } from "../UnitContext";
+import {
+  defaultWeightKg,
+  formatWeight,
+  toDisplayWeight,
+  toKg,
+  unitLabel,
+  weightStepperConfig,
+  type WeightUnit,
+} from "../units";
 import { colors, spacing, radii, typography } from "../theme";
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -23,7 +33,6 @@ type IconName = keyof typeof Ionicons.glyphMap;
 const DEFAULT_SETS = 3;
 const DEFAULT_REPS = 10;
 const DEFAULT_SECONDS = 30;
-const DEFAULT_WEIGHT_KG = 20;
 
 export function modeIcon(exercise?: Exercise): IconName {
   if (!exercise) return "ellipse-outline";
@@ -31,14 +40,17 @@ export function modeIcon(exercise?: Exercise): IconName {
   return exercise.weightType === "External" ? "barbell-outline" : "body-outline";
 }
 
-export function prescriptionSummary(item: RoutineExercise): string {
+export function prescriptionSummary(
+  item: RoutineExercise,
+  unit: WeightUnit = "Kg",
+): string {
   const parts = [`${item.sets} sets`];
   if (item.exercise?.mode === "Time") {
     if (item.timePerSetSeconds) parts.push(`${item.timePerSetSeconds}s each`);
   } else if (item.repsPerSet) {
     parts.push(`${item.repsPerSet} reps`);
   }
-  if (item.weightKg != null) parts.push(`@ ${item.weightKg} kg`);
+  if (item.weightKg != null) parts.push(`@ ${formatWeight(item.weightKg, unit)}`);
   return parts.join(" · ");
 }
 
@@ -52,6 +64,7 @@ export default function RoutineSection({
   onChanged: () => void;
 }) {
   const api = useApi();
+  const { unit } = useUnit();
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(routine.name);
@@ -64,7 +77,8 @@ export default function RoutineSection({
   const [sets, setSets] = useState(DEFAULT_SETS);
   const [reps, setReps] = useState(DEFAULT_REPS);
   const [seconds, setSeconds] = useState(DEFAULT_SECONDS);
-  const [weight, setWeight] = useState(DEFAULT_WEIGHT_KG);
+  // Always kg - conversion happens only at the Stepper boundary below.
+  const [weight, setWeight] = useState(defaultWeightKg(unit));
 
   const resetForm = () => {
     setSelected(null);
@@ -72,7 +86,7 @@ export default function RoutineSection({
     setSets(DEFAULT_SETS);
     setReps(DEFAULT_REPS);
     setSeconds(DEFAULT_SECONDS);
-    setWeight(DEFAULT_WEIGHT_KG);
+    setWeight(defaultWeightKg(unit));
     setSearch("");
     setPicking(false);
   };
@@ -84,7 +98,7 @@ export default function RoutineSection({
     setSets(item.sets);
     setReps(item.repsPerSet ?? DEFAULT_REPS);
     setSeconds(item.timePerSetSeconds ?? DEFAULT_SECONDS);
-    setWeight(item.weightKg ?? DEFAULT_WEIGHT_KG);
+    setWeight(item.weightKg ?? defaultWeightKg(unit));
     setPicking(true);
   };
 
@@ -218,7 +232,9 @@ export default function RoutineSection({
             <Ionicons name={modeIcon(item.exercise)} size={22} color={colors.primary} />
             <View style={styles.catalogMain}>
               <Text style={styles.catalogName}>{item.exercise?.name}</Text>
-              <Text style={styles.catalogMuscle}>{prescriptionSummary(item)}</Text>
+              <Text style={styles.catalogMuscle}>
+                {prescriptionSummary(item, unit)}
+              </Text>
             </View>
             <Pressable
               onPress={() => removeExercise(item.id, item.exercise?.name)}
@@ -272,7 +288,13 @@ export default function RoutineSection({
                     styles.catalogRow,
                     pressed && styles.rowPressed,
                   ]}
-                  onPress={() => setSelected(exercise)}
+                  onPress={() => {
+                    setSelected(exercise);
+                    // Seeded here rather than at mount: the unit preference
+                    // loads asynchronously, and this is the moment the weight
+                    // field actually appears.
+                    setWeight(defaultWeightKg(unit));
+                  }}
                 >
                   <Ionicons
                     name={modeIcon(exercise)}
@@ -311,14 +333,12 @@ export default function RoutineSection({
 
             {needsWeight && (
               <>
-                <SectionLabel>Target weight (kg)</SectionLabel>
+                <SectionLabel>Target weight ({unitLabel(unit)})</SectionLabel>
                 <Stepper
-                  value={weight}
-                  onChange={setWeight}
+                  value={toDisplayWeight(weight, unit)}
+                  onChange={(v) => setWeight(toKg(v, unit))}
                   min={0}
-                  max={500}
-                  step={2.5}
-                  decimals={1}
+                  {...weightStepperConfig(unit)}
                 />
               </>
             )}

@@ -7,6 +7,7 @@ import { useApi } from "../api/client";
 import type { WorkoutPlan } from "../api/types";
 import type { WorkoutStackParamList } from "../navigation/WorkoutStack";
 import { modeIcon, prescriptionSummary } from "../components/RoutineSection";
+import { useUnit } from "../UnitContext";
 import {
   ScreenContainer,
   Card,
@@ -22,6 +23,7 @@ type Props = NativeStackScreenProps<WorkoutStackParamList, "RoutinePreview">;
 export default function RoutinePreviewScreen({ route, navigation }: Props) {
   const { planId } = route.params;
   const api = useApi();
+  const { unit } = useUnit();
 
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
@@ -101,7 +103,7 @@ export default function RoutinePreviewScreen({ route, navigation }: Props) {
                       <View style={styles.exerciseMain}>
                         <Text style={styles.exerciseName}>{item.exercise?.name}</Text>
                         <Text style={styles.exerciseMeta}>
-                          {prescriptionSummary(item)}
+                          {prescriptionSummary(item, unit)}
                         </Text>
                       </View>
                     </View>
