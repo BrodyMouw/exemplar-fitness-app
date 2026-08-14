@@ -42,6 +42,53 @@ export type WorkoutPlanSummary = {
   exerciseCount: number;
 };
 
+export type WeeklyCount = {
+  weekStart: string;
+  count: number;
+};
+
+export type ConsistencyStats = {
+  totalWorkouts: number;
+  workoutsThisWeek: number;
+  weekStreak: number;
+  weeklyCounts: WeeklyCount[];
+};
+
+export type ExerciseProgress = {
+  exerciseId: string;
+  exerciseName: string;
+  targetMuscle: string;
+  metric: "Weight" | "Reps" | "Time";
+  unit: string;
+  first: number;
+  latest: number;
+  delta: number;
+  sessionCount: number;
+  lastPerformed: string;
+};
+
+export type HistoryPoint = {
+  completedAt: string;
+  value: number;
+  sets: number;
+};
+
+export type ExerciseHistory = {
+  exerciseId: string;
+  exerciseName: string;
+  targetMuscle: string;
+  metric: "Weight" | "Reps" | "Time";
+  unit: string;
+  points: HistoryPoint[];
+};
+
+export type WeightEntry = {
+  id: string;
+  weightKg: number;
+  loggedOn: string;
+  note?: string;
+};
+
 export type WorkoutLog = {
   id: string;
   routineExerciseId: string;

@@ -45,6 +45,11 @@ export function ScreenContainer({
         style={styles.screen}
         contentContainerStyle={[styles.screenContent, style]}
         keyboardShouldPersistTaps="handled"
+        // Numeric keyboards have no return key, so anything below a focused
+        // input has to stay reachable: inset the scroll area by the keyboard
+        // height, and let a drag dismiss it.
+        automaticallyAdjustKeyboardInsets
+        keyboardDismissMode="on-drag"
       >
         {children}
       </ScrollView>
@@ -348,6 +353,23 @@ export function TextField(props: TextInputProps) {
   );
 }
 
+export function StatTile({
+  value,
+  label,
+  tone,
+}: {
+  value: string | number;
+  label: string;
+  tone?: string;
+}) {
+  return (
+    <View style={styles.statTile}>
+      <Text style={[styles.statValue, tone ? { color: tone } : null]}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
 export function SectionLabel({ children }: { children: ReactNode }) {
   return <Text style={styles.sectionLabel}>{children}</Text>;
 }
@@ -439,6 +461,14 @@ const styles = StyleSheet.create({
   sectionLabel: {
     ...typography.label,
     marginTop: spacing.sm,
+  },
+  statTile: { flex: 1, alignItems: "center" },
+  statValue: { fontSize: 26, fontWeight: "800", color: colors.text },
+  statLabel: {
+    ...typography.muted,
+    fontSize: 11,
+    marginTop: 2,
+    textAlign: "center",
   },
   empty: {
     paddingVertical: spacing.xl,
