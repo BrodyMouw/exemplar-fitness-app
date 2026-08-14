@@ -10,6 +10,14 @@ import type {
   WeightEntry,
 } from "../api/types";
 import type { ProgressStackParamList } from "../navigation/ProgressStack";
+import { useUnit } from "../UnitContext";
+import {
+  formatWeight,
+  toDisplayWeight,
+  toKg,
+  unitLabel,
+  type WeightUnit,
+} from "../units";
 import BarChart, { type Bar } from "../components/BarChart";
 import {
   ScreenContainer,
@@ -36,10 +44,25 @@ function formatDelta(delta: number, unit: string): string {
   return `${rounded > 0 ? "+" : "−"}${Math.abs(rounded)} ${unit}`;
 }
 
+// Stats come back per-exercise on whichever metric suits it. Only the weight
+// ones convert - reps and seconds must pass through untouched.
+function inDisplayUnit(
+  item: ExerciseProgress,
+  value: number,
+  unit: WeightUnit,
+): number {
+  return item.metric === "Weight" ? toDisplayWeight(value, unit) : value;
+}
+
+function displayUnitLabel(item: ExerciseProgress, unit: WeightUnit): string {
+  return item.metric === "Weight" ? unitLabel(unit) : item.unit;
+}
+
 type Props = NativeStackScreenProps<ProgressStackParamList, "ProgressHome">;
 
 export default function ProgressScreen({ navigation }: Props) {
   const api = useApi();
+  const { unit } = useUnit();
 
   const [consistency, setConsistency] = useState<ConsistencyStats | null>(null);
   const [progress, setProgress] = useState<ExerciseProgress[]>([]);
@@ -65,7 +88,10 @@ export default function ProgressScreen({ navigation }: Props) {
 
   const logWeight = async () => {
     if (!weight) return;
-    await api.post("/api/weightentries", { weightKg: parseFloat(weight) });
+    // Typed in the user's unit; stored as kg like everything else.
+    await api.post("/api/weightentries", {
+      weightKg: toKg(parseFloat(weight), unit),
+    });
     setWeight("");
     load();
   };
@@ -78,9 +104,10 @@ export default function ProgressScreen({ navigation }: Props) {
 
   // Entries arrive newest-first; the chart reads left-to-right oldest-first.
   const recentEntries = entries.slice(0, BODY_WEIGHT_POINTS);
-  const bodyWeightBars: Bar[] = [...recentEntries]
-    .reverse()
-    .map((e) => ({ label: shortDate(e.loggedOn), value: e.weightKg }));
+  const bodyWeightBars: Bar[] = [...recentEntries].reverse().map((e) => ({
+    label: shortDate(e.loggedOn),
+    value: toDisplayWeight(e.weightKg, unit),
+  }));
 
   const latestWeight = entries[0];
   const monthAgo = new Date();
@@ -138,14 +165,20 @@ export default function ProgressScreen({ navigation }: Props) {
                   <Text style={styles.exerciseMeta}>{item.targetMuscle}</Text>
                 </View>
                 <Chip
-                  label={formatDelta(item.delta, item.unit)}
+                  label={formatDelta(
+                    inDisplayUnit(item, item.delta, unit),
+                    displayUnitLabel(item, unit),
+                  )}
                   tone={flat ? "neutral" : up ? "success" : "accent"}
                 />
               </View>
               <View style={styles.progressValues}>
                 <Text style={styles.progressNumbers}>
-                  {item.first} → <Text style={styles.latest}>{item.latest}</Text>{" "}
-                  {item.unit}
+                  {inDisplayUnit(item, item.first, unit)} →{" "}
+                  <Text style={styles.latest}>
+                    {inDisplayUnit(item, item.latest, unit)}
+                  </Text>{" "}
+                  {displayUnitLabel(item, unit)}
                 </Text>
                 <View style={styles.sessionsRow}>
                   <Text style={styles.exerciseMeta}>
@@ -170,14 +203,19 @@ export default function ProgressScreen({ navigation }: Props) {
           <>
             <View style={styles.bodyHeader}>
               <View>
-                <Text style={styles.currentWeight}>{latestWeight.weightKg} kg</Text>
+                <Text style={styles.currentWeight}>
+                  {formatWeight(latestWeight.weightKg, unit)}
+                </Text>
                 <Text style={styles.exerciseMeta}>
                   as of {latestWeight.loggedOn}
                 </Text>
               </View>
               {bodyWeightDelta !== null ? (
                 <Chip
-                  label={`${formatDelta(bodyWeightDelta, "kg")} in 30d`}
+                  label={`${formatDelta(
+                    toDisplayWeight(bodyWeightDelta, unit),
+                    unitLabel(unit),
+                  )} in 30d`}
                   tone="neutral"
                 />
               ) : null}
@@ -200,7 +238,7 @@ export default function ProgressScreen({ navigation }: Props) {
       </Card>
 
       <Card>
-        <SectionLabel>Log today's weight (kg)</SectionLabel>
+        <SectionLabel>Log today's weight ({unitLabel(unit)})</SectionLabel>
         {/* Button sits beside the input, not under it - iOS scrolls a focused
             field into view but not whatever follows it, and a decimal-pad
             keyboard has no return key to submit with. */}
@@ -208,7 +246,7 @@ export default function ProgressScreen({ navigation }: Props) {
           <TextField
             style={styles.logInput}
             keyboardType="decimal-pad"
-            placeholder="e.g. 82.5"
+            placeholder={unit === "Lb" ? "e.g. 180" : "e.g. 82.5"}
             value={weight}
             onChangeText={setWeight}
           />
@@ -223,7 +261,9 @@ export default function ProgressScreen({ navigation }: Props) {
             <Card key={entry.id}>
               <View style={styles.entryRow}>
                 <Text style={styles.entryDate}>{entry.loggedOn}</Text>
-                <Text style={styles.entryWeight}>{entry.weightKg} kg</Text>
+                <Text style={styles.entryWeight}>
+                  {formatWeight(entry.weightKg, unit)}
+                </Text>
               </View>
             </Card>
           ))}
