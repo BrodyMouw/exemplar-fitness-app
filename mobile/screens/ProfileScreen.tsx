@@ -1,11 +1,15 @@
 import { View, Text, StyleSheet } from "react-native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser, useClerk } from "@clerk/expo";
 import { useUnit } from "../UnitContext";
+import type { ProfileStackParamList } from "../navigation/ProfileStack";
 import { ScreenContainer, Card, SecondaryButton, SelectPill } from "../components/ui";
 import { colors, spacing, radii, typography } from "../theme";
 
-export default function ProfileScreen() {
+type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileHome">;
+
+export default function ProfileScreen({ navigation }: Props) {
   const { user } = useUser();
   const { signOut } = useClerk();
   const { unit, setUnit } = useUnit();
@@ -14,7 +18,7 @@ export default function ProfileScreen() {
   const displayName = user?.fullName ?? email?.split("@")[0] ?? "Athlete";
 
   return (
-    <ScreenContainer scroll style={styles.content}>
+    <ScreenContainer scroll>
       <Card style={styles.headerCard}>
         <View style={styles.avatar}>
           <Ionicons name="person" size={30} color={colors.primary} />
@@ -47,6 +51,17 @@ export default function ProfileScreen() {
         </View>
       </Card>
 
+      <Card onPress={() => navigation.navigate("ManageExercises")}>
+        <View style={styles.linkRow}>
+          <Ionicons name="barbell-outline" size={22} color={colors.primary} />
+          <View style={styles.prefMain}>
+            <Text style={styles.prefLabel}>Manage exercises</Text>
+            <Text style={styles.prefHint}>Add your own, or hide ones you don't use.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </View>
+      </Card>
+
       <SecondaryButton
         title="Sign out"
         tone="danger"
@@ -58,7 +73,6 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: spacing.xxl + spacing.xl },
   headerCard: { alignItems: "center", paddingVertical: spacing.xl },
   avatar: {
     width: 72,
@@ -77,5 +91,6 @@ const styles = StyleSheet.create({
   prefLabel: { ...typography.body, fontWeight: "600" },
   prefHint: { ...typography.muted, marginTop: 2 },
   prefChoices: { flexDirection: "row", gap: spacing.sm },
+  linkRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   signOut: { marginTop: spacing.lg },
 });
