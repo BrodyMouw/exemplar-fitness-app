@@ -6,7 +6,7 @@ import HomeScreen from "../screens/HomeScreen";
 import PlansStack, { type PlansStackParamList } from "./PlansStack";
 import WorkoutStack, { type WorkoutStackParamList } from "./WorkoutStack";
 import ProgressStack, { type ProgressStackParamList } from "./ProgressStack";
-import ProfileScreen from "../screens/ProfileScreen";
+import ProfileStack, { type ProfileStackParamList } from "./ProfileStack";
 import { colors, radii } from "../theme";
 
 export type TabParamList = {
@@ -14,7 +14,7 @@ export type TabParamList = {
   Plans: NavigatorScreenParams<PlansStackParamList>;
   Workout: NavigatorScreenParams<WorkoutStackParamList>;
   Progress: NavigatorScreenParams<ProgressStackParamList>;
-  Profile: undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -71,7 +71,7 @@ export default function TabNavigator() {
       <Tab.Screen name="Plans" component={PlansStack} />
       <Tab.Screen name="Workout" component={WorkoutStack} />
       <Tab.Screen name="Progress" component={ProgressStack} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 }

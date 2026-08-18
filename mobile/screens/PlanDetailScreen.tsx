@@ -237,6 +237,7 @@ export default function PlanDetailScreen({ route, navigation }: Props) {
           routine={selectedRoutine}
           catalog={catalog}
           onChanged={load}
+          onCatalogChanged={load}
         />
       ) : (
         !adding && (

@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<Routine> Routines => Set<Routine>();
     public DbSet<RoutineExercise> RoutineExercises => Set<RoutineExercise>();
     public DbSet<Exercise> Exercises => Set<Exercise>();
+    public DbSet<ArchivedExercise> ArchivedExercises => Set<ArchivedExercise>();
     public DbSet<WorkoutLog> WorkoutLogs => Set<WorkoutLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -45,6 +46,28 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(l => l.RoutineExerciseId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Custom exercises belong to their creator; seeded ones have no owner.
+        modelBuilder.Entity<Exercise>()
+            .HasOne(e => e.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(e => e.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Disposable per-user metadata, so cascading from either side is fine.
+        modelBuilder.Entity<ArchivedExercise>().HasKey(a => new { a.UserId, a.ExerciseId });
+
+        modelBuilder.Entity<ArchivedExercise>()
+            .HasOne(a => a.User)
+            .WithMany()
+            .HasForeignKey(a => a.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ArchivedExercise>()
+            .HasOne(a => a.Exercise)
+            .WithMany()
+            .HasForeignKey(a => a.ExerciseId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Exercise>().HasData(
             new Exercise { Id = Guid.Parse("00000000-0000-0000-0000-000000000001"), Name = "Bench Press", Description = "Barbell press lying on a flat bench.", Mode = ExerciseMode.Reps, WeightType = ExerciseWeightType.External, TargetMuscle = "Chest" },

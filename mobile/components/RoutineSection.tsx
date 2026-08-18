@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useApi } from "../api/client";
 import type { Exercise, Routine, RoutineExercise } from "../api/types";
+import ExerciseForm, { type ExerciseDraft } from "./ExerciseForm";
 import {
   Card,
   Chip,
@@ -58,10 +59,13 @@ export default function RoutineSection({
   routine,
   catalog,
   onChanged,
+  onCatalogChanged,
 }: {
   routine: Routine;
   catalog: Exercise[];
   onChanged: () => void;
+  // Lets the parent refetch the catalog after a new exercise is created here.
+  onCatalogChanged?: () => void;
 }) {
   const api = useApi();
   const { unit } = useUnit();
@@ -71,6 +75,7 @@ export default function RoutineSection({
   const [workoutType, setWorkoutType] = useState(routine.workoutType);
 
   const [picking, setPicking] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Exercise | null>(null);
   const [editingItem, setEditingItem] = useState<RoutineExercise | null>(null);
@@ -88,7 +93,24 @@ export default function RoutineSection({
     setSeconds(DEFAULT_SECONDS);
     setWeight(defaultWeightKg(unit));
     setSearch("");
+    setCreating(false);
     setPicking(false);
+  };
+
+  const pickExercise = (exercise: Exercise) => {
+    setSelected(exercise);
+    setCreating(false);
+    // Seeded here rather than at mount: the unit preference loads
+    // asynchronously, and this is the moment the weight field appears.
+    setWeight(defaultWeightKg(unit));
+  };
+
+  // Creating from inside the picker drops straight into the prescription form
+  // for the new exercise, so the routine you were building isn't interrupted.
+  const createExercise = async (draft: ExerciseDraft) => {
+    const created = await api.post<Exercise>("/api/exercises", draft);
+    onCatalogChanged?.();
+    pickExercise(created);
   };
 
   const openEdit = (item: RoutineExercise) => {
@@ -261,14 +283,24 @@ export default function RoutineSection({
         visible={picking}
         onClose={resetForm}
         title={
-          selected
-            ? editingItem
-              ? `Edit ${selected.name}`
-              : selected.name
-            : "Add exercise"
+          creating
+            ? "New exercise"
+            : selected
+              ? editingItem
+                ? `Edit ${selected.name}`
+                : selected.name
+              : "Add exercise"
         }
       >
-        {!selected ? (
+        {creating ? (
+          <View style={styles.formBody}>
+            <ExerciseForm
+              submitLabel="Create"
+              onSubmit={createExercise}
+              onCancel={() => setCreating(false)}
+            />
+          </View>
+        ) : !selected ? (
           <View style={styles.catalogList}>
             <View style={styles.searchFieldWrap}>
               <SearchField
@@ -288,13 +320,7 @@ export default function RoutineSection({
                     styles.catalogRow,
                     pressed && styles.rowPressed,
                   ]}
-                  onPress={() => {
-                    setSelected(exercise);
-                    // Seeded here rather than at mount: the unit preference
-                    // loads asynchronously, and this is the moment the weight
-                    // field actually appears.
-                    setWeight(defaultWeightKg(unit));
-                  }}
+                  onPress={() => pickExercise(exercise)}
                 >
                   <Ionicons
                     name={modeIcon(exercise)}
@@ -309,6 +335,21 @@ export default function RoutineSection({
                 </Pressable>
               ))
             )}
+
+            {/* Also shown when a search finds nothing - that's exactly the
+                moment you realise the exercise doesn't exist yet. */}
+            <Pressable
+              onPress={() => setCreating(true)}
+              style={({ pressed }) => [styles.newRow, pressed && styles.rowPressed]}
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={20}
+                color={colors.primary}
+                style={styles.catalogIcon}
+              />
+              <Text style={styles.newRowText}>Add a new exercise</Text>
+            </Pressable>
           </View>
         ) : (
           <View style={styles.formBody}>
@@ -384,6 +425,12 @@ const styles = StyleSheet.create({
   catalogMuscle: { ...typography.muted, marginTop: 2 },
   catalogList: { paddingBottom: spacing.lg },
   searchFieldWrap: { marginBottom: spacing.sm },
+  newRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing.lg,
+  },
+  newRowText: { ...typography.body, fontWeight: "700", color: colors.primary },
   noResults: { ...typography.muted, textAlign: "center", paddingVertical: spacing.xl },
   formBody: { paddingBottom: spacing.xl },
   selectedDescription: { ...typography.muted, marginBottom: spacing.sm },

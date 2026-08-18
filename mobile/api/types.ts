@@ -8,6 +8,10 @@ export type Exercise = {
   mode: ExerciseMode;
   weightType?: ExerciseWeightType;
   targetMuscle: string;
+  // Present on the catalog endpoint; absent when an Exercise arrives nested
+  // inside a RoutineExercise, which serializes the raw entity.
+  isCustom?: boolean;
+  isArchived?: boolean;
 };
 
 export type RoutineExercise = {
