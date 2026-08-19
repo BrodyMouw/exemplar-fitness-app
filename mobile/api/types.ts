@@ -55,6 +55,7 @@ export type ConsistencyStats = {
   totalWorkouts: number;
   workoutsThisWeek: number;
   weekStreak: number;
+  averageDurationMinutes?: number | null;
   weeklyCounts: WeeklyCount[];
 };
 
@@ -93,8 +94,23 @@ export type WeightEntry = {
   note?: string;
 };
 
+export type WorkoutSession = {
+  id: string;
+  routineId?: string;
+  routineName: string;
+  startedAt: string;
+  // Null while the workout is still in progress.
+  completedAt?: string;
+};
+
+export type SessionWithLogs = {
+  session: WorkoutSession;
+  logs: WorkoutLog[];
+};
+
 export type WorkoutLog = {
   id: string;
+  sessionId?: string;
   // What was performed - kept even if the prescription below is deleted.
   exerciseId: string;
   // Null once the plan/routine/exercise this was logged against is removed.

@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<RoutineExercise> RoutineExercises => Set<RoutineExercise>();
     public DbSet<Exercise> Exercises => Set<Exercise>();
     public DbSet<ArchivedExercise> ArchivedExercises => Set<ArchivedExercise>();
+    public DbSet<WorkoutSession> WorkoutSessions => Set<WorkoutSession>();
     public DbSet<WorkoutLog> WorkoutLogs => Set<WorkoutLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -45,6 +46,26 @@ public class AppDbContext : DbContext
             .HasOne(l => l.RoutineExercise)
             .WithMany()
             .HasForeignKey(l => l.RoutineExerciseId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Same principle as the plan link above: losing the session must never
+        // take the logged history with it.
+        modelBuilder.Entity<WorkoutLog>()
+            .HasOne(l => l.Session)
+            .WithMany()
+            .HasForeignKey(l => l.SessionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<WorkoutSession>()
+            .HasOne(s => s.User)
+            .WithMany()
+            .HasForeignKey(s => s.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WorkoutSession>()
+            .HasOne(s => s.Routine)
+            .WithMany()
+            .HasForeignKey(s => s.RoutineId)
             .OnDelete(DeleteBehavior.SetNull);
 
         // Custom exercises belong to their creator; seeded ones have no owner.

@@ -25,6 +25,13 @@ public class WorkoutLog
     [JsonIgnore]
     public RoutineExercise? RoutineExercise { get; set; }
 
+    // The session this was logged during. Nullable so a log outlives its
+    // session the same way it outlives its plan.
+    public Guid? SessionId { get; set; }
+
+    [JsonIgnore]
+    public WorkoutSession? Session { get; set; }
+
     public DateTime CompletedAt { get; set; } = DateTime.UtcNow;
     public int ActualSets { get; set; }
     public int? ActualReps { get; set; }

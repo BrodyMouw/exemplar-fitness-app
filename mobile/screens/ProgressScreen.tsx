@@ -132,6 +132,14 @@ export default function ProgressScreen({ navigation }: Props) {
             tone={consistency?.weekStreak ? colors.success : undefined}
           />
           <StatTile value={consistency?.totalWorkouts ?? 0} label="Total workouts" />
+          <StatTile
+            value={
+              consistency?.averageDurationMinutes != null
+                ? `${consistency.averageDurationMinutes}m`
+                : "—"
+            }
+            label="Avg length"
+          />
         </View>
         {consistency && consistency.totalWorkouts === 0 ? (
           <Text style={styles.hint}>
