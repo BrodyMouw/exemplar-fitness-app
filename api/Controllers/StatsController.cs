@@ -31,28 +31,32 @@ public class StatsController : ControllerBase
     [HttpGet("consistency")]
     public async Task<ActionResult<ConsistencyStats>> GetConsistency()
     {
-        // Left join: a log whose plan has since been deleted has no routine to
-        // group by, but it still happened and still counts.
-        var rows = await (
-            from log in _db.WorkoutLogs
-            where log.UserId == CurrentUserId
-            join re in _db.RoutineExercises on log.RoutineExerciseId equals re.Id into matches
-            from re in matches.DefaultIfEmpty()
-            select new { log.CompletedAt, RoutineId = (Guid?)re.RoutineId })
+        // A workout is now a recorded session rather than something inferred
+        // from log timestamps. Sessions with nothing logged are excluded, so
+        // tapping Start and walking away doesn't inflate the count.
+        var rows = await _db.WorkoutSessions
+            .Where(s => s.UserId == CurrentUserId
+                && _db.WorkoutLogs.Any(l => l.SessionId == s.Id))
+            .Select(s => new { s.StartedAt, s.CompletedAt })
             .ToListAsync();
 
-        // There's no session entity, so a "workout" is derived: one routine
-        // trained on one calendar date. Two different routines on the same day
-        // count separately. Dates are resolved here rather than in SQL to keep
-        // the query free of provider-specific date translation.
         var sessions = rows
-            .Select(r => new
+            .Select(s => new
             {
-                Date = DateOnly.FromDateTime(r.CompletedAt.ToUniversalTime()),
-                r.RoutineId,
+                Date = DateOnly.FromDateTime(s.StartedAt.ToUniversalTime()),
             })
-            .Distinct()
             .ToList();
+
+        // Only completed sessions have a meaningful duration.
+        var durations = rows
+            .Where(s => s.CompletedAt != null)
+            .Select(s => (s.CompletedAt!.Value - s.StartedAt).TotalMinutes)
+            .Where(m => m >= 0)
+            .ToList();
+
+        var averageDuration = durations.Count > 0
+            ? (int)Math.Round(durations.Average())
+            : (int?)null;
 
         var thisWeekStart = WeekStart(DateOnly.FromDateTime(DateTime.UtcNow));
 
@@ -82,6 +86,7 @@ public class StatsController : ControllerBase
             sessions.Count,
             countsByWeek.GetValueOrDefault(thisWeekStart),
             streak,
+            averageDuration,
             weeklyCounts));
     }
 
@@ -229,6 +234,7 @@ public record ConsistencyStats(
     int TotalWorkouts,
     int WorkoutsThisWeek,
     int WeekStreak,
+    int? AverageDurationMinutes,
     List<WeeklyCount> WeeklyCounts);
 
 public record HistoryPoint(DateTime CompletedAt, decimal Value, int Sets);

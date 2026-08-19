@@ -3,7 +3,12 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useApi } from "../api/client";
-import type { Routine, RoutineExercise, WorkoutLog } from "../api/types";
+import type {
+  Routine,
+  RoutineExercise,
+  SessionWithLogs,
+  WorkoutLog,
+} from "../api/types";
 import type { WorkoutStackParamList } from "../navigation/WorkoutStack";
 import { modeIcon, prescriptionSummary } from "../components/RoutineSection";
 import CountdownTimer from "../components/CountdownTimer";
@@ -54,23 +59,56 @@ export default function RunnerScreen({ route, navigation }: Props) {
   const { unit } = useUnit();
 
   const [routine, setRoutine] = useState<Routine | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.get<Routine>(`/api/routines/${routineId}`).then((data) => {
+    let cancelled = false;
+
+    // Starting is idempotent server-side: re-entering a routine you're partway
+    // through resumes that session rather than forking a second one.
+    Promise.all([
+      api.get<Routine>(`/api/routines/${routineId}`),
+      api.post<SessionWithLogs>(`/api/routines/${routineId}/sessions`, {}),
+    ]).then(([data, resumed]) => {
+      if (cancelled) return;
       setRoutine(data);
+      setSessionId(resumed.session.id);
+
+      const loggedByExercise = new Map(
+        resumed.logs
+          .filter((l) => l.routineExerciseId)
+          .map((l) => [l.routineExerciseId as string, l]),
+      );
+
       // Seed only what we haven't got yet - never overwrite numbers the user
-      // has already dialled in for this session.
+      // has already dialled in for this session. Anything already logged comes
+      // back with its values and log id, so a resumed workout shows its
+      // checkmarks and updates those rows instead of double-logging them.
       setEntries((prev) => {
         const next = { ...prev };
         for (const re of data.routineExercises) {
-          if (!next[re.id]) next[re.id] = seedEntry(re);
+          if (next[re.id]) continue;
+          const logged = loggedByExercise.get(re.id);
+          next[re.id] = logged
+            ? {
+                sets: logged.actualSets,
+                reps: logged.actualReps ?? re.repsPerSet ?? 10,
+                seconds: logged.actualTimeSeconds ?? re.timePerSetSeconds ?? 30,
+                weight: logged.weightUsedKg ?? re.weightKg ?? 0,
+                logId: logged.id,
+              }
+            : seedEntry(re);
         }
         return next;
       });
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [api, routineId]);
 
   const exercises = routine?.routineExercises ?? [];
@@ -116,6 +154,7 @@ export default function RunnerScreen({ route, navigation }: Props) {
         actualReps: isTimed ? null : entry.reps,
         actualTimeSeconds: isTimed ? entry.seconds : null,
         weightUsedKg: needsWeight ? entry.weight : null,
+        sessionId,
       };
 
       if (entry.logId) {
@@ -129,6 +168,8 @@ export default function RunnerScreen({ route, navigation }: Props) {
       }
 
       if (isLast) {
+        // Closing the session is what stamps its duration.
+        if (sessionId) await api.put(`/api/sessions/${sessionId}/complete`, {});
         navigation.goBack();
       } else {
         setIndex(index + 1);
