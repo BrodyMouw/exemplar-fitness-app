@@ -103,11 +103,14 @@ dotnet ef database update
 dotnet run --launch-profile http
 ```
 
-Configure the client — create `mobile/.env`:
+Configure the client — copy `mobile/.env.example` to `mobile/.env` and fill it in:
 
 ```
 EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+EXPO_PUBLIC_API_BASE=http://192.168.1.42:5002
 ```
+
+`EXPO_PUBLIC_API_BASE` needs your machine's LAN IP for a physical device (the API binds to `0.0.0.0` so the device can reach it), or `http://10.0.2.2:5002` on the Android emulator.
 
 ```bash
 cd mobile
@@ -115,7 +118,18 @@ npm install
 npx expo start
 ```
 
-Set `API_BASE` in `mobile/config.ts` to your machine's LAN IP (the API binds to `0.0.0.0` so a physical device can reach it).
+## Tests
+
+```bash
+dotnet test          # API — 22 tests
+cd mobile && npm test  # conversion logic — 9 tests
+```
+
+API tests run against a real PostgreSQL database (`fitnessdb_test`, created automatically on the same container) rather than EF's in-memory provider. That's deliberate: several of the guarantees under test — logged history surviving a deleted plan, the catalog resisting deletion while referenced — exist purely as foreign-key delete behaviour, and the in-memory provider doesn't enforce foreign keys at all, so those tests would pass whether or not the design actually worked.
+
+Controllers are exercised directly with a synthetic `ClaimsPrincipal` rather than through the HTTP stack, since the logic under test is in the controller. Every endpoint is user-scoped, so each test creating its own user id gives isolation without teardown.
+
+Coverage is aimed at the non-obvious logic rather than line count: ownership enforcement, the durable-history invariant, stats aggregation (week bucketing, streak breaks, per-mode metric selection), and session resume idempotency.
 
 ---
 
@@ -147,4 +161,5 @@ Deliberately deferred, in rough priority:
 - **Auto-estimated routine duration** — now that real session durations exist to estimate from
 - **Drag-to-reorder** exercises within a routine
 - **Sharing plans between users** — the private-exercise ownership model is the prerequisite
-- **Automated tests**, HTTPS, and Sign in with Apple before this goes near real users
+- **Broader test coverage** — the suite currently targets the highest-risk logic; the screens themselves are untested
+- **HTTPS and Sign in with Apple** before this goes near real users
