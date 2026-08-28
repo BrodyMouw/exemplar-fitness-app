@@ -1,5 +1,7 @@
 # Exemplar Fitness
 
+[![CI](https://github.com/BrodyMouw/exemplar-fitness-app/actions/workflows/ci.yml/badge.svg)](https://github.com/BrodyMouw/exemplar-fitness-app/actions/workflows/ci.yml)
+
 A workout planning and training-log app: build a weekly plan, run through it one exercise at a time, and track strength progression over time.
 
 Built as a full-stack project — React Native (Expo) client, ASP.NET Core API, PostgreSQL, hosted authentication.
@@ -130,6 +132,8 @@ API tests run against a real PostgreSQL database (`fitnessdb_test`, created auto
 Controllers are exercised directly with a synthetic `ClaimsPrincipal` rather than through the HTTP stack, since the logic under test is in the controller. Every endpoint is user-scoped, so each test creating its own user id gives isolation without teardown.
 
 Coverage is aimed at the non-obvious logic rather than line count: ownership enforcement, the durable-history invariant, stats aggregation (week bucketing, streak breaks, per-mode metric selection), and session resume idempotency.
+
+Both suites run in GitHub Actions on every push to `main` and every pull request, with Postgres as a service container. The test connection string comes from `FITNESS_TEST_DB` when set and falls back to the local development container, so `dotnet test` needs no configuration locally.
 
 ---
 
