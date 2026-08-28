@@ -16,8 +16,11 @@ namespace FitnessApi.Tests;
 /// once for the whole run.
 public class DatabaseFixture : IAsyncLifetime
 {
-    private const string ConnectionString =
-        "Host=localhost;Port=5432;Database=fitnessdb_test;Username=fitnessapp;Password=devpassword";
+    /// Defaults to the local development container so `dotnet test` needs no
+    /// setup; CI overrides it to point at its own Postgres service.
+    private static string ConnectionString =>
+        Environment.GetEnvironmentVariable("FITNESS_TEST_DB")
+        ?? "Host=localhost;Port=5432;Database=fitnessdb_test;Username=fitnessapp;Password=devpassword";
 
     public async Task InitializeAsync()
     {
