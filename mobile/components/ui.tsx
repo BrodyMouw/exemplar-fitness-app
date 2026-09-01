@@ -30,6 +30,24 @@ export function confirmDelete(
   ]);
 }
 
+/// Secondary and destructive actions tucked behind a "..." control, so a
+/// full-width red Delete button isn't the most prominent thing on the screen.
+export function showActionMenu(
+  title: string,
+  actions: { label: string; onPress: () => void; destructive?: boolean }[],
+) {
+  Alert.alert(title, undefined, [
+    ...actions.map((action) => ({
+      text: action.label,
+      style: action.destructive ? ("destructive" as const) : ("default" as const),
+      // Deferred a tick: an action that opens its own confirmation would
+      // otherwise try to present a second alert before this one has dismissed.
+      onPress: () => setTimeout(action.onPress, 0),
+    })),
+    { text: "Cancel", style: "cancel" as const },
+  ]);
+}
+
 export function ScreenContainer({
   children,
   scroll = false,

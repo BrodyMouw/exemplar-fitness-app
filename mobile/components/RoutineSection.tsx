@@ -16,6 +16,7 @@ import {
   TextField,
   SectionLabel,
   confirmDelete,
+  showActionMenu,
 } from "./ui";
 import { useUnit } from "../UnitContext";
 import {
@@ -236,14 +237,20 @@ export default function RoutineSection({
                   />
                 </View>
               </View>
-              <IconButton name="ellipsis-horizontal" onPress={() => setEditing(true)} />
+              <IconButton
+                name="ellipsis-horizontal"
+                onPress={() =>
+                  showActionMenu(routine.name, [
+                    { label: "Edit routine", onPress: () => setEditing(true) },
+                    {
+                      label: "Delete routine",
+                      destructive: true,
+                      onPress: deleteRoutine,
+                    },
+                  ])
+                }
+              />
             </View>
-            <SecondaryButton
-              title="Delete routine"
-              tone="danger"
-              onPress={deleteRoutine}
-              style={styles.deleteButton}
-            />
           </>
         )}
       </Card>
@@ -410,7 +417,6 @@ const styles = StyleSheet.create({
   routineMain: { flex: 1, paddingRight: spacing.md },
   routineTitle: { ...typography.heading, fontSize: 17 },
   chipRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
-  deleteButton: { marginTop: spacing.lg },
   catalogRow: {
     flexDirection: "row",
     alignItems: "center",
