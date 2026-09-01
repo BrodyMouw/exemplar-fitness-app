@@ -18,6 +18,7 @@ import {
   SectionLabel,
   EmptyState,
   confirmDelete,
+  showActionMenu,
 } from "../components/ui";
 import { colors, spacing, typography } from "../theme";
 
@@ -149,7 +150,15 @@ export default function PlanDetailScreen({ route, navigation }: Props) {
                   <Text style={styles.planDescription}>{plan.description}</Text>
                 ) : null}
               </View>
-              <IconButton name="ellipsis-horizontal" onPress={() => setEditing(true)} />
+              <IconButton
+                name="ellipsis-horizontal"
+                onPress={() =>
+                  showActionMenu(plan.name, [
+                    { label: "Edit plan", onPress: () => setEditing(true) },
+                    { label: "Delete plan", destructive: true, onPress: deletePlan },
+                  ])
+                }
+              />
             </View>
             <View style={styles.metaRow}>
               <Chip
@@ -157,12 +166,6 @@ export default function PlanDetailScreen({ route, navigation }: Props) {
                 tone="primary"
               />
             </View>
-            <SecondaryButton
-              title="Delete plan"
-              tone="danger"
-              onPress={deletePlan}
-              style={styles.deleteButton}
-            />
           </>
         )}
       </Card>
@@ -254,7 +257,6 @@ const styles = StyleSheet.create({
   planTitle: { ...typography.title, fontSize: 22 },
   planDescription: { ...typography.muted, marginTop: spacing.xs, fontSize: 14 },
   metaRow: { flexDirection: "row", marginTop: spacing.md },
-  deleteButton: { marginTop: spacing.lg },
   routineRow: {
     flexDirection: "row",
     alignItems: "center",

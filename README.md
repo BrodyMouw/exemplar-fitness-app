@@ -6,6 +6,17 @@ A workout planning and training-log app: build a weekly plan, run through it one
 
 Built as a full-stack project — React Native (Expo) client, ASP.NET Core API, PostgreSQL, hosted authentication.
 
+<p align="center">
+  <img src="docs/screenshots/plans.jpg" width="24%" alt="Plans list" />
+  <img src="docs/screenshots/plan-detail.jpg" width="24%" alt="Plan detail with routines and prescriptions" />
+  <img src="docs/screenshots/runner.jpg" width="24%" alt="Guided workout runner" />
+  <img src="docs/screenshots/progress.jpg" width="24%" alt="Progress and strength progression" />
+</p>
+
+<p align="center">
+  <sub>Plans · Plan detail · Guided workout runner · Progress</sub>
+</p>
+
 ---
 
 ## Stack
