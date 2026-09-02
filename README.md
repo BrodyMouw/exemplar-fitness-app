@@ -78,6 +78,30 @@ A "workout" used to be *derived* — a distinct (date, routine) pair reconstruct
 
 `WorkoutSession` makes it a recorded fact. Starting a workout is **idempotent**: re-entering a routine you're partway through resumes the open session rather than forking a second one, and returns its existing logs so the runner restores your checkmarks and entered values instead of double-logging. Sessions left open from a previous day auto-close.
 
+### Duration is derived, not stored
+
+The mirror image of the decision above. `Routine` carried an
+`EstimatedTimeMinutes` column, which is derived data wearing a fact's clothing:
+it moves when an exercise is added, when a prescription is edited, and every
+time the routine is trained. Three separate things would have had to remember
+to invalidate it, and it would have been quietly wrong in between. The column
+is gone; the estimate is computed per request.
+
+It prefers measurement over guesswork — the median of your own completed
+sessions for that routine, falling back to a prescription-based estimate
+(work, rest between sets, changeover) until there are at least three.
+
+Both numbers there are deliberate. **Median, not mean**, because a session you
+tapped through in a minute is real, recorded data and a terrible predictor: one
+routine with nine sessions at ~65 minutes also has a 1-minute run-through, and
+the mean reports 59 where the median reports 65. **Three sessions**, because
+that is the smallest sample in which a single outlier cannot *be* the median —
+at one it is the answer, at two it drags the midpoint halfway.
+
+The API returns which source it used, and the UI says so rather than dressing a
+guess as a measurement: "Typical for your last 9 sessions" against
+"Estimated from the plan".
+
 ### Migrations that carry data forward
 
 Two migrations needed hand-editing rather than accepting the generated scaffold:
@@ -156,7 +180,7 @@ npx expo start
 ## Tests
 
 ```bash
-dotnet test          # API — 22 tests
+dotnet test          # API — 35 tests
 cd mobile && npm test  # conversion + error mapping — 18 tests
 ```
 
@@ -195,7 +219,6 @@ mobile/
 Deliberately deferred, in rough priority:
 
 - **Per-set variance** — a log currently summarizes all sets, so a dropped final set is indistinguishable from a clean one
-- **Auto-estimated routine duration** — now that real session durations exist to estimate from
 - **Drag-to-reorder** exercises within a routine
 - **Sharing plans between users** — the private-exercise ownership model is the prerequisite
 - **Broader test coverage** — the suite currently targets the highest-risk logic; the screens themselves are untested

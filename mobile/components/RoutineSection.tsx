@@ -2,7 +2,12 @@ import { useState } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useApi } from "../api/client";
-import type { Exercise, Routine, RoutineExercise } from "../api/types";
+import type {
+  Exercise,
+  Routine,
+  RoutineEstimate,
+  RoutineExercise,
+} from "../api/types";
 import ExerciseForm, { type ExerciseDraft } from "./ExerciseForm";
 import {
   Card,
@@ -41,6 +46,23 @@ export function modeIcon(exercise?: Exercise): IconName {
   if (!exercise) return "ellipse-outline";
   if (exercise.mode === "Time") return "stopwatch-outline";
   return exercise.weightType === "External" ? "barbell-outline" : "body-outline";
+}
+
+// A measured estimate and a guessed one are not the same claim, so they don't
+// read identically: once there's enough history the number stands on its own,
+// and before that it's marked as the guess it is.
+export function estimateLabel(estimate: RoutineEstimate | null): string | null {
+  if (!estimate) return null;
+  return estimate.source === "History"
+    ? `~${estimate.minutes} min`
+    : `~${estimate.minutes} min est.`;
+}
+
+export function estimateHint(estimate: RoutineEstimate | null): string | null {
+  if (!estimate) return null;
+  return estimate.source === "History"
+    ? `Typical for your last ${estimate.sessionCount} sessions`
+    : "Estimated from the plan - train it a few times to sharpen this";
 }
 
 export function prescriptionSummary(
@@ -244,6 +266,9 @@ export default function RoutineSection({
                     label={`${routine.routineExercises.length} exercises`}
                     tone="neutral"
                   />
+                  {estimateLabel(routine.estimate) ? (
+                    <Chip label={estimateLabel(routine.estimate)!} tone="primary" />
+                  ) : null}
                 </View>
               </View>
               <IconButton
@@ -425,7 +450,13 @@ const styles = StyleSheet.create({
   routineHeader: { flexDirection: "row", alignItems: "flex-start" },
   routineMain: { flex: 1, paddingRight: spacing.md },
   routineTitle: { ...typography.heading, fontSize: 17 },
-  chipRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
+  // Wraps: a third chip pushes past the card edge on a narrow screen.
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
   catalogRow: {
     flexDirection: "row",
     alignItems: "center",
