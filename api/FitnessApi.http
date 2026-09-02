@@ -1,6 +1,8 @@
 @FitnessApi_HostAddress = http://localhost:5002
+@ClerkToken = paste-a-clerk-session-jwt-here
 
-GET {{FitnessApi_HostAddress}}/weatherforecast/
+GET {{FitnessApi_HostAddress}}/api/exercises
 Accept: application/json
+Authorization: Bearer {{ClerkToken}}
 
 ###
