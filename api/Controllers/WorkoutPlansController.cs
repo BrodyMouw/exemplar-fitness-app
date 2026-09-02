@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FitnessApi.Data;
 using FitnessApi.Models;
+using FitnessApi.Services;
 
 namespace FitnessApi.Controllers;
 
@@ -49,6 +50,9 @@ public class WorkoutPlansController : ControllerBase
 
         if (plan is null || plan.UserId != CurrentUserId)
             return NotFound();
+
+        // One query for the whole plan rather than one per training day.
+        await RoutineEstimator.ApplyAsync(_db, CurrentUserId, plan.Routines);
 
         return Ok(plan);
     }

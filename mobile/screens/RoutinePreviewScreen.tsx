@@ -6,7 +6,12 @@ import { useApi } from "../api/client";
 import { useLoad } from "../api/useLoad";
 import type { WorkoutPlan } from "../api/types";
 import type { WorkoutStackParamList } from "../navigation/WorkoutStack";
-import { modeIcon, prescriptionSummary } from "../components/RoutineSection";
+import {
+  modeIcon,
+  prescriptionSummary,
+  estimateLabel,
+  estimateHint,
+} from "../components/RoutineSection";
 import { useUnit } from "../UnitContext";
 import {
   ScreenContainer,
@@ -98,7 +103,17 @@ export default function RoutinePreviewScreen({ route, navigation }: Props) {
                     label={`${routine.routineExercises.length} exercises`}
                     tone="neutral"
                   />
+                  {estimateLabel(routine.estimate) ? (
+                    <Chip label={estimateLabel(routine.estimate)!} tone="primary" />
+                  ) : null}
                 </View>
+                {/* This is the screen you're on right before committing to the
+                    workout, so it's worth saying where the number came from. */}
+                {estimateHint(routine.estimate) ? (
+                  <Text style={styles.estimateHint}>
+                    {estimateHint(routine.estimate)}
+                  </Text>
+                ) : null}
               </Card>
 
               {routine.routineExercises.length === 0 ? (
@@ -145,7 +160,14 @@ export default function RoutinePreviewScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   routineStrip: { gap: spacing.sm, paddingVertical: spacing.xs },
   routineTitle: { ...typography.heading, fontSize: 17 },
-  chipRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
+  // Wraps: a third chip pushes past the card edge on a narrow screen.
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  estimateHint: { ...typography.muted, marginTop: spacing.sm },
   exerciseRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   exerciseMain: { flex: 1 },
   exerciseName: { ...typography.body, fontWeight: "600" },

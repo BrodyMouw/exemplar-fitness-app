@@ -26,14 +26,23 @@ export type RoutineExercise = {
   weightKg?: number;
 };
 
+// Computed by the API per request rather than stored - it moves with the
+// prescription and with your own session history. Null when the routine has no
+// exercises, so there is nothing to estimate.
+export type RoutineEstimate = {
+  minutes: number;
+  source: "History" | "Prescription";
+  sessionCount: number;
+};
+
 export type Routine = {
   id: string;
   workoutPlanId: string;
   name: string;
   workoutType: string;
-  estimatedTimeMinutes: number;
   order: number;
   routineExercises: RoutineExercise[];
+  estimate: RoutineEstimate | null;
 };
 
 // Shape returned by GET /api/workoutplans - lighter than a full plan, with

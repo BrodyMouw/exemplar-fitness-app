@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FitnessApi.Data;
 using FitnessApi.Models;
+using FitnessApi.Services;
 
 namespace FitnessApi.Controllers;
 
@@ -31,6 +32,8 @@ public class RoutinesController : ControllerBase
         if (routine is null || routine.WorkoutPlan?.UserId != CurrentUserId)
             return NotFound();
 
+        await RoutineEstimator.ApplyAsync(_db, CurrentUserId, new[] { routine });
+
         return Ok(routine);
     }
 
@@ -48,7 +51,6 @@ public class RoutinesController : ControllerBase
             WorkoutPlanId = planId,
             Name = request.Name,
             WorkoutType = request.WorkoutType,
-            EstimatedTimeMinutes = request.EstimatedTimeMinutes ?? 0,
             Order = order,
         };
 
@@ -70,9 +72,6 @@ public class RoutinesController : ControllerBase
 
         routine.Name = request.Name;
         routine.WorkoutType = request.WorkoutType;
-        // Not collected in the UI yet (estimated automatically later) - leave
-        // any existing value alone rather than zeroing it out on every edit.
-        routine.EstimatedTimeMinutes = request.EstimatedTimeMinutes ?? routine.EstimatedTimeMinutes;
         await _db.SaveChangesAsync();
 
         return Ok(routine);
@@ -95,4 +94,4 @@ public class RoutinesController : ControllerBase
     }
 }
 
-public record RoutineRequest(string Name, string WorkoutType, int? EstimatedTimeMinutes = null);
+public record RoutineRequest(string Name, string WorkoutType);
