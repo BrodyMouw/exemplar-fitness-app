@@ -85,6 +85,28 @@ Two migrations needed hand-editing rather than accepting the generated scaffold:
 - Adding `ExerciseId` to existing logs — EF generates it as `NOT NULL DEFAULT '00000000-...'`, which would point every historical row at a non-existent exercise. Rewritten as add-nullable → backfill from the prescription → tighten, so a failed backfill errors loudly instead of admitting bad data.
 - Introducing sessions — existing logs are grouped using the same rule the old derived stats used, so the totals already on screen don't move. The session id is computed as `md5(user || routine || date)::uuid` so both the insert and the follow-up update derive the identical key and correlate without a temporary column.
 
+### A failed request is not an empty account
+
+Every screen fetched with `.then(setState)` and no rejection handling, so an
+unreachable API left state at its initial value and the screen rendered its
+empty state — "No plans yet", "0 workouts, no streak", "No history for this
+exercise yet". The app reported, confidently and in its own voice, that data
+the user had entered did not exist.
+
+Reads now go through a `useLoad` hook that keeps the failure and offers a
+retry, and the two outcomes render differently on purpose: `ErrorState` when
+nothing loaded, `ErrorBanner` when a *refresh* failed over data already on
+screen — that data is real, just possibly stale, so discarding it would lose
+more than it explains. Writes go through `attempt`, because a rejected save
+previously just stopped: the sheet stayed open, the button re-enabled, and
+nothing said the change hadn't landed.
+
+The distinction that has to survive is "the server answered" versus "we never
+reached it". `ExerciseHistoryScreen` shows why: the history endpoint returns
+404 for an exercise with no logs, so *that* 404 is a real answer — but the
+screen was catching every failure and reporting all of them as "no history
+yet". Only 404 is treated as data now; the unit tests pin the two apart.
+
 ### Authentication
 
 Clerk owns sign-up and credentials. The API validates JWTs against Clerk's JWKS endpoint and never handles passwords. A middleware provisions a local `User` row from the token's claims on first authenticated request, so the database has something to hang foreign keys off without duplicating identity management.
@@ -135,7 +157,7 @@ npx expo start
 
 ```bash
 dotnet test          # API — 22 tests
-cd mobile && npm test  # conversion logic — 9 tests
+cd mobile && npm test  # conversion + error mapping — 18 tests
 ```
 
 API tests run against a real PostgreSQL database (`fitnessdb_test`, created automatically on the same container) rather than EF's in-memory provider. That's deliberate: several of the guarantees under test — logged history surviving a deleted plan, the catalog resisting deletion while referenced — exist purely as foreign-key delete behaviour, and the in-memory provider doesn't enforce foreign keys at all, so those tests would pass whether or not the design actually worked.

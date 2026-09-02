@@ -1,8 +1,9 @@
 import { useState, useCallback } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useApi } from "../api/client";
+import { useLoad } from "../api/useLoad";
+import { isNotFound } from "../api/errors";
 import type { ExerciseHistory } from "../api/types";
 import type { ProgressStackParamList } from "../navigation/ProgressStack";
 import { useUnit } from "../UnitContext";
@@ -15,6 +16,7 @@ import {
   SectionLabel,
   StatTile,
   EmptyState,
+  ErrorState,
 } from "../components/ui";
 import { colors, spacing, typography } from "../theme";
 
@@ -39,14 +41,33 @@ export default function ExerciseHistoryScreen({ route }: Props) {
   const [history, setHistory] = useState<ExerciseHistory | null>(null);
   const [missing, setMissing] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      api
-        .get<ExerciseHistory>(`/api/stats/exercise-progress/${exerciseId}`)
-        .then(setHistory)
-        .catch(() => setMissing(true));
-    }, [api, exerciseId]),
-  );
+  const load = useCallback(async () => {
+    try {
+      setHistory(
+        await api.get<ExerciseHistory>(
+          `/api/stats/exercise-progress/${exerciseId}`,
+        ),
+      );
+      setMissing(false);
+    } catch (err) {
+      // The endpoint answers 404 when the exercise has no logs, so that one
+      // really does mean "no history". Every other failure used to land here
+      // too and get reported the same way - claiming the training never
+      // happened when the request simply didn't complete.
+      if (!isNotFound(err)) throw err;
+      setMissing(true);
+    }
+  }, [api, exerciseId]);
+
+  const { error, reload } = useLoad(load);
+
+  if (error) {
+    return (
+      <ScreenContainer>
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenContainer>
+    );
+  }
 
   if (missing) {
     return (

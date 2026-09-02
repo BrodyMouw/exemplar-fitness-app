@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, radii, shadow, typography } from "../theme";
+import { describeError } from "../api/errors";
 
 // Deletes here cascade (a plan takes its routines with it), so they always
 // go through a confirmation rather than firing on a single tap.
@@ -46,6 +47,30 @@ export function showActionMenu(
     })),
     { text: "Cancel", style: "cancel" as const },
   ]);
+}
+
+// Runs a mutating action, surfacing a failure instead of silently doing
+// nothing.
+//
+// Without this a rejected save just stops: the sheet stays open, the button
+// re-enables, and nothing anywhere says the change didn't land - so the
+// natural read is that the tap missed, and you try again. Returns whether it
+// succeeded, so callers can skip follow-up work like closing a modal.
+export function showError(err: unknown, title = "Something went wrong") {
+  Alert.alert(title, describeError(err));
+}
+
+export async function attempt(
+  action: () => Promise<void>,
+  title = "Something went wrong",
+): Promise<boolean> {
+  try {
+    await action();
+    return true;
+  } catch (err) {
+    showError(err, title);
+    return false;
+  }
 }
 
 export function ScreenContainer({
@@ -400,6 +425,62 @@ export function EmptyState({ message }: { message: string }) {
   );
 }
 
+// The counterpart to EmptyState, and deliberately not the same thing: an
+// empty state is a fact about your account, this is a fact about the request.
+// Collapsing the two is what made a stopped API look like deleted data.
+export function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <View style={styles.errorState}>
+      <View style={styles.errorIcon}>
+        <Ionicons
+          name="cloud-offline-outline"
+          size={22}
+          color={colors.danger}
+        />
+      </View>
+      <Text style={styles.errorTitle}>Couldn't load</Text>
+      <Text style={styles.errorText}>{message}</Text>
+      {onRetry ? (
+        <SecondaryButton
+          title="Try again"
+          onPress={onRetry}
+          style={styles.errorButton}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+// For when a refresh fails but earlier data is still on screen. That data is
+// real, just possibly stale, and throwing it away to show a full-screen error
+// would lose more than it explains - so the failure is reported inline and the
+// content stays put.
+export function ErrorBanner({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <View style={styles.errorBanner}>
+      <Ionicons name="cloud-offline-outline" size={16} color={colors.danger} />
+      <Text style={styles.errorBannerText}>{message}</Text>
+      {onRetry ? (
+        <Pressable onPress={onRetry} hitSlop={8}>
+          <Text style={styles.errorBannerAction}>Retry</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   screenContent: {
@@ -493,6 +574,46 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyText: { ...typography.muted },
+  errorState: {
+    paddingVertical: spacing.xl,
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  errorIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.pill,
+    backgroundColor: colors.dangerMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.xs,
+  },
+  errorTitle: { ...typography.title, fontSize: 16 },
+  errorText: {
+    ...typography.muted,
+    textAlign: "center",
+    paddingHorizontal: spacing.lg,
+  },
+  errorButton: { marginTop: spacing.sm },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.dangerMuted,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  errorBannerText: {
+    ...typography.muted,
+    flex: 1,
+    color: colors.danger,
+  },
+  errorBannerAction: {
+    color: colors.danger,
+    fontWeight: "600",
+    fontSize: 13,
+  },
   iconButton: {
     width: 32,
     height: 32,

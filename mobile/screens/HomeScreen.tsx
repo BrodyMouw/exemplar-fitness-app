@@ -14,6 +14,7 @@ import {
   SelectPill,
   TextField,
   SectionLabel,
+  showError,
 } from "../components/ui";
 import { spacing, typography } from "../theme";
 
@@ -54,6 +55,8 @@ export default function HomeScreen() {
         screen: "PlanDetail",
         params: { planId: plan.id },
       });
+    } catch (err) {
+      showError(err, "Couldn't create this plan");
     } finally {
       setSaving(false);
     }

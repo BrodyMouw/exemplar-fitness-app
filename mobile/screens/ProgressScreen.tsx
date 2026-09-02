@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useApi } from "../api/client";
+import { useLoad } from "../api/useLoad";
 import type {
   ConsistencyStats,
   ExerciseProgress,
@@ -28,6 +28,9 @@ import {
   SectionLabel,
   StatTile,
   EmptyState,
+  ErrorState,
+  ErrorBanner,
+  attempt,
 } from "../components/ui";
 import { colors, spacing, typography } from "../theme";
 
@@ -80,20 +83,18 @@ export default function ProgressScreen({ navigation }: Props) {
     setEntries(w);
   }, [api]);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const { error, reload } = useLoad(load);
 
   const logWeight = async () => {
     if (!weight) return;
-    // Typed in the user's unit; stored as kg like everything else.
-    await api.post("/api/weightentries", {
-      weightKg: toKg(parseFloat(weight), unit),
+    await attempt(async () => {
+      // Typed in the user's unit; stored as kg like everything else.
+      await api.post("/api/weightentries", {
+        weightKg: toKg(parseFloat(weight), unit),
+      });
+      setWeight("");
+      await reload();
     });
-    setWeight("");
-    load();
   };
 
   const weeklyBars: Bar[] =
@@ -116,8 +117,20 @@ export default function ProgressScreen({ navigation }: Props) {
   const bodyWeightDelta =
     latestWeight && priorEntry ? latestWeight.weightKg - priorEntry.weightKg : null;
 
+  // The stat tiles fall back to 0, so a failed load renders "0 workouts, no
+  // streak" - a confident claim about the user's training rather than an
+  // admission that nothing was fetched. Bail out before that happens.
+  if (error && !consistency) {
+    return (
+      <ScreenContainer>
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer scroll>
+      {error ? <ErrorBanner message={error} onRetry={reload} /> : null}
       <Text style={styles.firstSectionTitle}>Consistency</Text>
       <Card>
         <View style={styles.statRow}>
