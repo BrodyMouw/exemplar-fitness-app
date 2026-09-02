@@ -17,6 +17,7 @@ import {
   SectionLabel,
   confirmDelete,
   showActionMenu,
+  attempt,
 } from "./ui";
 import { useUnit } from "../UnitContext";
 import {
@@ -109,9 +110,11 @@ export default function RoutineSection({
   // Creating from inside the picker drops straight into the prescription form
   // for the new exercise, so the routine you were building isn't interrupted.
   const createExercise = async (draft: ExerciseDraft) => {
-    const created = await api.post<Exercise>("/api/exercises", draft);
-    onCatalogChanged?.();
-    pickExercise(created);
+    await attempt(async () => {
+      const created = await api.post<Exercise>("/api/exercises", draft);
+      onCatalogChanged?.();
+      pickExercise(created);
+    });
   };
 
   const openEdit = (item: RoutineExercise) => {
@@ -135,12 +138,14 @@ export default function RoutineSection({
   });
 
   const saveRoutine = async () => {
-    await api.put(`/api/routines/${routine.id}`, {
-      name: name.trim(),
-      workoutType: workoutType.trim(),
+    await attempt(async () => {
+      await api.put(`/api/routines/${routine.id}`, {
+        name: name.trim(),
+        workoutType: workoutType.trim(),
+      });
+      setEditing(false);
+      onChanged();
     });
-    setEditing(false);
-    onChanged();
   };
 
   const submitExercise = async () => {
@@ -153,26 +158,29 @@ export default function RoutineSection({
       weightKg: !isTimed && selected.weightType === "External" ? weight : null,
     };
 
-    if (editingItem) {
-      await api.put(`/api/routineexercises/${editingItem.id}`, prescription);
-    } else {
-      await api.post(`/api/routines/${routine.id}/exercises`, {
-        exerciseId: selected.id,
-        ...prescription,
-      });
-    }
-    resetForm();
-    onChanged();
+    await attempt(async () => {
+      if (editingItem) {
+        await api.put(`/api/routineexercises/${editingItem.id}`, prescription);
+      } else {
+        await api.post(`/api/routines/${routine.id}/exercises`, {
+          exerciseId: selected.id,
+          ...prescription,
+        });
+      }
+      resetForm();
+      onChanged();
+    });
   };
 
   const removeExercise = async (id: string, label?: string) => {
     confirmDelete(
       "Remove exercise",
       `Remove ${label ?? "this exercise"} from ${routine.name}?`,
-      async () => {
-        await api.del(`/api/routineexercises/${id}`);
-        onChanged();
-      },
+      () =>
+        attempt(async () => {
+          await api.del(`/api/routineexercises/${id}`);
+          onChanged();
+        }),
     );
   };
 
@@ -180,10 +188,11 @@ export default function RoutineSection({
     confirmDelete(
       "Delete routine",
       `Delete ${routine.name} and all of its exercises? This can't be undone.`,
-      async () => {
-        await api.del(`/api/routines/${routine.id}`);
-        onChanged();
-      },
+      () =>
+        attempt(async () => {
+          await api.del(`/api/routines/${routine.id}`);
+          onChanged();
+        }),
     );
   };
 

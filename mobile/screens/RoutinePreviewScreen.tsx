@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useApi } from "../api/client";
+import { useLoad } from "../api/useLoad";
 import type { WorkoutPlan } from "../api/types";
 import type { WorkoutStackParamList } from "../navigation/WorkoutStack";
 import { modeIcon, prescriptionSummary } from "../components/RoutineSection";
@@ -15,6 +15,8 @@ import {
   PrimaryButton,
   SelectPill,
   EmptyState,
+  ErrorState,
+  ErrorBanner,
 } from "../components/ui";
 import { colors, spacing, typography } from "../theme";
 
@@ -28,20 +30,29 @@ export default function RoutinePreviewScreen({ route, navigation }: Props) {
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      api.get<WorkoutPlan>(`/api/workoutplans/${planId}`).then((data) => {
-        setPlan(data);
-        navigation.setOptions({ title: data.name });
-      });
-    }, [api, planId, navigation]),
-  );
+  const load = useCallback(async () => {
+    const data = await api.get<WorkoutPlan>(`/api/workoutplans/${planId}`);
+    setPlan(data);
+    navigation.setOptions({ title: data.name });
+  }, [api, planId, navigation]);
+
+  const { error, reload } = useLoad(load);
 
   useEffect(() => {
     if (!plan) return;
     const stillExists = plan.routines.some((r) => r.id === selectedRoutineId);
     if (!stillExists) setSelectedRoutineId(plan.routines[0]?.id ?? null);
   }, [plan, selectedRoutineId]);
+
+  // Order matters: a failed first load leaves `plan` null, and without this
+  // the screen would sit on "Loading…" forever.
+  if (error && !plan) {
+    return (
+      <ScreenContainer>
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenContainer>
+    );
+  }
 
   if (!plan) {
     return (
@@ -55,6 +66,7 @@ export default function RoutinePreviewScreen({ route, navigation }: Props) {
 
   return (
     <ScreenContainer scroll>
+      {error ? <ErrorBanner message={error} onRetry={reload} /> : null}
       {plan.routines.length === 0 ? (
         <EmptyState message="This plan has no routines yet. Add some from the Plans tab." />
       ) : (

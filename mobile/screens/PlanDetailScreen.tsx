@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useApi } from "../api/client";
+import { useLoad } from "../api/useLoad";
 import type { Exercise, WorkoutPlan } from "../api/types";
 import type { PlansStackParamList } from "../navigation/PlansStack";
 import RoutineSection from "../components/RoutineSection";
@@ -17,8 +17,11 @@ import {
   TextField,
   SectionLabel,
   EmptyState,
+  ErrorState,
+  ErrorBanner,
   confirmDelete,
   showActionMenu,
+  attempt,
 } from "../components/ui";
 import { colors, spacing, typography } from "../theme";
 
@@ -54,11 +57,7 @@ export default function PlanDetailScreen({ route, navigation }: Props) {
     navigation.setOptions({ title: planData.name });
   }, [api, planId, navigation]);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const { error, reload } = useLoad(load);
 
   // Keep a routine selected: default to the first, and recover if the
   // selected one was just deleted.
@@ -71,36 +70,51 @@ export default function PlanDetailScreen({ route, navigation }: Props) {
   }, [plan, selectedRoutineId]);
 
   const savePlan = async () => {
-    await api.put(`/api/workoutplans/${planId}`, {
-      name: planName.trim(),
-      description: planDescription.trim() || null,
+    await attempt(async () => {
+      await api.put(`/api/workoutplans/${planId}`, {
+        name: planName.trim(),
+        description: planDescription.trim() || null,
+      });
+      setEditing(false);
+      await reload();
     });
-    setEditing(false);
-    load();
   };
 
   const deletePlan = () => {
     confirmDelete(
       "Delete plan",
       `Delete ${plan?.name} and all of its routines? This can't be undone.`,
-      async () => {
-        await api.del(`/api/workoutplans/${planId}`);
-        navigation.goBack();
-      },
+      () =>
+        attempt(async () => {
+          await api.del(`/api/workoutplans/${planId}`);
+          navigation.goBack();
+        }),
     );
   };
 
   const addRoutine = async () => {
     if (!routineName.trim()) return;
-    await api.post(`/api/workoutplans/${planId}/routines`, {
-      name: routineName.trim(),
-      workoutType: workoutType.trim(),
+    await attempt(async () => {
+      await api.post(`/api/workoutplans/${planId}/routines`, {
+        name: routineName.trim(),
+        workoutType: workoutType.trim(),
+      });
+      setRoutineName("");
+      setWorkoutType("");
+      setAdding(false);
+      await reload();
     });
-    setRoutineName("");
-    setWorkoutType("");
-    setAdding(false);
-    load();
   };
+
+  // Checked before the loading state: a failed first load leaves `plan` null,
+  // which would otherwise render as "Loading…" indefinitely.
+  if (error && !plan) {
+    return (
+      <ScreenContainer>
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenContainer>
+    );
+  }
 
   if (!plan) {
     return (
@@ -116,6 +130,7 @@ export default function PlanDetailScreen({ route, navigation }: Props) {
 
   return (
     <ScreenContainer scroll>
+      {error ? <ErrorBanner message={error} onRetry={reload} /> : null}
       <Card>
         {editing ? (
           <>
@@ -239,8 +254,8 @@ export default function PlanDetailScreen({ route, navigation }: Props) {
           key={selectedRoutine.id}
           routine={selectedRoutine}
           catalog={catalog}
-          onChanged={load}
-          onCatalogChanged={load}
+          onChanged={reload}
+          onCatalogChanged={reload}
         />
       ) : (
         !adding && (

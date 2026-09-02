@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useApi } from "../api/client";
+import { useLoad } from "../api/useLoad";
 import type { Exercise } from "../api/types";
 import { modeIcon } from "../components/RoutineSection";
 import ExerciseForm, { type ExerciseDraft } from "../components/ExerciseForm";
@@ -14,6 +14,9 @@ import {
   PrimaryButton,
   SearchField,
   EmptyState,
+  ErrorState,
+  ErrorBanner,
+  attempt,
 } from "../components/ui";
 import { colors, spacing, typography } from "../theme";
 
@@ -30,32 +33,34 @@ export default function ManageExercisesScreen() {
     );
   }, [api]);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const { error, reload } = useLoad(load);
 
   const createExercise = async (draft: ExerciseDraft) => {
-    await api.post("/api/exercises", draft);
-    setCreating(false);
-    load();
+    await attempt(async () => {
+      await api.post("/api/exercises", draft);
+      setCreating(false);
+      await reload();
+    });
   };
 
   const updateExercise = async (draft: ExerciseDraft) => {
     if (!editing) return;
-    await api.put(`/api/exercises/${editing.id}`, draft);
-    setEditing(null);
-    load();
+    await attempt(async () => {
+      await api.put(`/api/exercises/${editing.id}`, draft);
+      setEditing(null);
+      await reload();
+    });
   };
 
   const toggleArchive = async (exercise: Exercise) => {
-    if (exercise.isArchived) {
-      await api.del(`/api/exercises/${exercise.id}/archive`);
-    } else {
-      await api.post(`/api/exercises/${exercise.id}/archive`, {});
-    }
-    load();
+    await attempt(async () => {
+      if (exercise.isArchived) {
+        await api.del(`/api/exercises/${exercise.id}/archive`);
+      } else {
+        await api.post(`/api/exercises/${exercise.id}/archive`, {});
+      }
+      await reload();
+    });
   };
 
   const q = search.trim().toLowerCase();
@@ -108,8 +113,17 @@ export default function ManageExercisesScreen() {
     </Card>
   );
 
+  if (error && exercises.length === 0) {
+    return (
+      <ScreenContainer>
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer scroll>
+      {error ? <ErrorBanner message={error} onRetry={reload} /> : null}
       <SearchField
         placeholder="Search exercises"
         value={search}

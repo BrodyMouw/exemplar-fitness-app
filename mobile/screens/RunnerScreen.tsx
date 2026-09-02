@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useApi } from "../api/client";
+import { describeError } from "../api/errors";
 import type {
   Routine,
   RoutineExercise,
@@ -29,6 +30,8 @@ import {
   Stepper,
   SectionLabel,
   EmptyState,
+  ErrorState,
+  showError,
 } from "../components/ui";
 import { colors, spacing, radii, typography } from "../theme";
 
@@ -63,9 +66,12 @@ export default function RunnerScreen({ route, navigation }: Props) {
   const [index, setIndex] = useState(0);
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError(null);
 
     // Starting is idempotent server-side: re-entering a routine you're partway
     // through resumes that session rather than forking a second one.
@@ -104,12 +110,16 @@ export default function RunnerScreen({ route, navigation }: Props) {
         }
         return next;
       });
+    }).catch((err) => {
+      if (!cancelled) setLoadError(describeError(err));
     });
 
     return () => {
       cancelled = true;
     };
-  }, [api, routineId]);
+    // Not a focus effect: starting the session is a write, so it re-runs only
+    // on an explicit retry rather than every time the screen comes forward.
+  }, [api, routineId, reloadKey]);
 
   const exercises = routine?.routineExercises ?? [];
   const current = exercises[index];
@@ -129,6 +139,17 @@ export default function RunnerScreen({ route, navigation }: Props) {
     },
     [patchEntry],
   );
+
+  if (loadError && !routine) {
+    return (
+      <ScreenContainer>
+        <ErrorState
+          message={loadError}
+          onRetry={() => setReloadKey((k) => k + 1)}
+        />
+      </ScreenContainer>
+    );
+  }
 
   if (!routine || !current || !entry) {
     return (
@@ -174,6 +195,8 @@ export default function RunnerScreen({ route, navigation }: Props) {
       } else {
         setIndex(index + 1);
       }
+    } catch (err) {
+      showError(err, "Couldn't save this exercise");
     } finally {
       setSaving(false);
     }

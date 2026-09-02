@@ -1,12 +1,12 @@
 import { useState, useCallback } from "react";
-import { Text, FlatList, StyleSheet } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { View, Text, FlatList, StyleSheet } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useApi } from "../api/client";
+import { useLoad } from "../api/useLoad";
 import type { WorkoutPlanSummary } from "../api/types";
 import type { WorkoutStackParamList } from "../navigation/WorkoutStack";
 import PlanCard from "../components/PlanCard";
-import { EmptyState } from "../components/ui";
+import { EmptyState, ErrorState, ErrorBanner } from "../components/ui";
 import { colors, spacing, typography } from "../theme";
 
 type Props = NativeStackScreenProps<WorkoutStackParamList, "WorkoutPlansList">;
@@ -15,11 +15,11 @@ export default function WorkoutPlansListScreen({ navigation }: Props) {
   const api = useApi();
   const [plans, setPlans] = useState<WorkoutPlanSummary[]>([]);
 
-  useFocusEffect(
-    useCallback(() => {
-      api.get<WorkoutPlanSummary[]>("/api/workoutplans").then(setPlans);
-    }, [api]),
-  );
+  const load = useCallback(async () => {
+    setPlans(await api.get<WorkoutPlanSummary[]>("/api/workoutplans"));
+  }, [api]);
+
+  const { error, reload } = useLoad(load);
 
   return (
     <FlatList
@@ -31,11 +31,18 @@ export default function WorkoutPlansListScreen({ navigation }: Props) {
       keyExtractor={(item) => item.id}
       ListHeaderComponent={
         plans.length > 0 ? (
-          <Text style={styles.prompt}>Which plan are you training today?</Text>
+          <View style={styles.header}>
+            {error ? <ErrorBanner message={error} onRetry={reload} /> : null}
+            <Text style={styles.prompt}>Which plan are you training today?</Text>
+          </View>
         ) : null
       }
       ListEmptyComponent={
-        <EmptyState message="No plans yet. Build one from the Home or Plans tab first." />
+        error ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : (
+          <EmptyState message="No plans yet. Build one from the Home or Plans tab first." />
+        )
       }
       renderItem={({ item }) => (
         <PlanCard
@@ -55,5 +62,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   row: { justifyContent: "space-between" },
+  header: { gap: spacing.md },
   prompt: { ...typography.muted, fontSize: 14, marginBottom: spacing.xs },
 });
