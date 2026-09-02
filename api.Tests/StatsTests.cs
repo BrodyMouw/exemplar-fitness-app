@@ -175,6 +175,31 @@ public class StatsTests
         Assert.Equal(40, stats.AverageDurationMinutes);
     }
 
+    [Fact]
+    public async Task AverageDuration_IsNotSkewedByAnUnrepresentativeSession()
+    {
+        await using var db = _fixture.CreateContext();
+        var userId = await TestContext.CreateUserAsync(db);
+        var exercise = await AddExerciseAsync(
+            db, userId, ExerciseMode.Reps, ExerciseWeightType.External);
+        var start = MondayOfThisWeek().AddHours(9);
+
+        // A one-minute tap-through alongside sessions of a realistic length.
+        // The mean of these is 47, dragged down by the tap-through; the middle
+        // value, 60, is the length a session here actually runs.
+        var minutes = new[] { 1, 40, 60, 65, 70 };
+        for (var day = 0; day < minutes.Length; day++)
+        {
+            var startedAt = start.AddDays(day);
+            await AddSessionAsync(
+                db, userId, exercise.Id, startedAt, startedAt.AddMinutes(minutes[day]));
+        }
+
+        var stats = await GetConsistencyAsync(db, userId);
+
+        Assert.Equal(60, stats.AverageDurationMinutes);
+    }
+
     private async Task<List<ExerciseProgress>> GetProgressAsync(
         AppDbContext db, string userId)
     {
