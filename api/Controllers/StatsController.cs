@@ -28,6 +28,20 @@ public class StatsController : ControllerBase
         return date.AddDays(-offset);
     }
 
+    // Median rather than mean: a single unrepresentative session - tapped
+    // through in a minute, or abandoned after one set - pulls an average away
+    // from the length sessions actually run, and one is enough to do it. The
+    // middle value stays among the real sessions however far out the outlier
+    // sits.
+    private static double Median(List<double> values)
+    {
+        var sorted = values.OrderBy(v => v).ToList();
+        var middle = sorted.Count / 2;
+        return sorted.Count % 2 == 1
+            ? sorted[middle]
+            : (sorted[middle - 1] + sorted[middle]) / 2;
+    }
+
     [HttpGet("consistency")]
     public async Task<ActionResult<ConsistencyStats>> GetConsistency()
     {
@@ -54,8 +68,10 @@ public class StatsController : ControllerBase
             .Where(m => m >= 0)
             .ToList();
 
-        var averageDuration = durations.Count > 0
-            ? (int)Math.Round(durations.Average())
+        // Reported as AverageDurationMinutes on the wire; the name predates the
+        // switch to a median and is kept so the client contract doesn't move.
+        var typicalDuration = durations.Count > 0
+            ? (int)Math.Round(Median(durations))
             : (int?)null;
 
         var thisWeekStart = WeekStart(DateOnly.FromDateTime(DateTime.UtcNow));
@@ -86,7 +102,7 @@ public class StatsController : ControllerBase
             sessions.Count,
             countsByWeek.GetValueOrDefault(thisWeekStart),
             streak,
-            averageDuration,
+            typicalDuration,
             weeklyCounts));
     }
 
